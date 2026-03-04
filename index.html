@@ -558,8 +558,8 @@
     <script>
         const FECHA_INICIO = new Date('2026-03-02T00:00:00'); 
 
-        // Diccionario de Densidades Calóricas
-        const DENSIDADES = { ARROZ: 1.3, PATATA: 0.8, TORTITAS: 3.8, ACEITE: 9, FIJO: 595 };
+        // Diccionario de Densidades Calóricas (Actualizado con densidad precisa de tortitas: 100.89 kcal / 30g = 3.363 kcal/g)
+        const DENSIDADES = { ARROZ: 1.3, PATATA: 0.8, TORTITAS: 3.363, ACEITE: 9, FIJO: 595 };
 
         // Base de Datos de METs (Equivalentes Metabólicos)
         const DEPORTES_MET = { "Pádel": 7.0, "Fútbol": 8.0, "Running": 9.0, "Caminar": 4.0, "Ciclismo": 7.5 };
@@ -942,11 +942,25 @@
             `;
         }
 
-        // --- SISTEMA DE MENÚ ELÁSTICO E HÍBRIDO (60/40) ---
+        // --- SISTEMA DE MENÚ ELÁSTICO E HÍBRIDO (60/40) Y UMBRAL TORTITAS/ARROZ ---
         function distribuirComida(budgetKcal, tipoAlmidon) {
+            let isArrozType = tipoAlmidon.includes('arroz') || tipoAlmidon.includes('tortita');
+            let finalAlmidon = tipoAlmidon;
             let densAlmidon = DENSIDADES.ARROZ;
-            if (tipoAlmidon.includes('patata')) densAlmidon = DENSIDADES.PATATA;
-            if (tipoAlmidon.includes('tortita')) densAlmidon = DENSIDADES.TORTITAS;
+
+            // Regla del Umbral (30g Tortitas = 100.89 kcal)
+            if (isArrozType) {
+                if (budgetKcal < 100.89) {
+                    finalAlmidon = "tortitas de arroz";
+                    densAlmidon = DENSIDADES.TORTITAS;
+                } else {
+                    finalAlmidon = "arroz";
+                    densAlmidon = DENSIDADES.ARROZ;
+                }
+            } else if (tipoAlmidon.includes('patata')) {
+                densAlmidon = DENSIDADES.PATATA;
+                finalAlmidon = "patata";
+            }
 
             const maxStarchG = 200; 
             const maxStarchKcal = maxStarchG * densAlmidon;
@@ -966,17 +980,32 @@
                 starchG: Math.round(starchG),
                 oilMl: Math.round(oilMl),
                 oilCda: (oilMl / 15).toFixed(1),
-                kcalTotales: Math.round(budgetKcal)
+                kcalTotales: Math.round(budgetKcal),
+                tipoAlmidonFinal: finalAlmidon
             };
         }
 
         function distribuirCena(baseBudget, extraBudget, tipoAlmidon) {
-            let densAlmidon = DENSIDADES.ARROZ;
-            if (tipoAlmidon.includes('patata')) densAlmidon = DENSIDADES.PATATA;
-            if (tipoAlmidon.includes('tortita')) densAlmidon = DENSIDADES.TORTITAS;
-
             let starchKcal = baseBudget + (extraBudget * 0.60);
             let oilKcal = extraBudget * 0.40;
+
+            let isArrozType = tipoAlmidon.includes('arroz') || tipoAlmidon.includes('tortita');
+            let finalAlmidon = tipoAlmidon;
+            let densAlmidon = DENSIDADES.ARROZ;
+
+            // Regla del Umbral (30g Tortitas = 100.89 kcal)
+            if (isArrozType) {
+                if (starchKcal < 100.89) {
+                    finalAlmidon = "tortitas de arroz";
+                    densAlmidon = DENSIDADES.TORTITAS;
+                } else {
+                    finalAlmidon = "arroz";
+                    densAlmidon = DENSIDADES.ARROZ;
+                }
+            } else if (tipoAlmidon.includes('patata')) {
+                densAlmidon = DENSIDADES.PATATA;
+                finalAlmidon = "patata";
+            }
 
             if (starchKcal > (200 * densAlmidon)) {
                 let overflow = starchKcal - (200 * densAlmidon);
@@ -999,7 +1028,8 @@
                 starchG: Math.round(starchG),
                 oilMl: Math.round(oilMl),
                 oilCda: (oilMl / 15).toFixed(1),
-                kcalTotales: Math.round(starchKcal + oilKcal)
+                kcalTotales: Math.round(starchKcal + oilKcal),
+                tipoAlmidonFinal: finalAlmidon
             };
         }
 
@@ -1125,12 +1155,12 @@
 
                 document.getElementById('sibo-valve-warning').style.display = macros.valvulaSiboActiva ? "block" : "none";
 
-                let cAlmStr = macros.comida.starchG > 0 ? ` + ${macros.comida.starchG}g ${meals.almidonComida}` : "";
+                let cAlmStr = macros.comida.starchG > 0 ? ` + ${macros.comida.starchG}g ${macros.comida.tipoAlmidonFinal}` : "";
                 let cOilStr = macros.comida.oilMl > 0 ? ` + ${macros.comida.oilCda} cda AOVE` : "";
                 let descComida = `${meals.comidaBase}${cAlmStr}${cOilStr}`;
                 let kcalComida = meals.cKcal + macros.comida.kcalTotales;
 
-                let ceAlmStr = macros.cena.starchG > 0 ? ` + ${macros.cena.starchG}g ${meals.almidonCena}` : "";
+                let ceAlmStr = macros.cena.starchG > 0 ? ` + ${macros.cena.starchG}g ${macros.cena.tipoAlmidonFinal}` : "";
                 let ceOilStr = macros.cena.oilMl > 0 ? ` + ${macros.cena.oilCda} cda AOVE` : "";
                 let descCena = `${meals.cenaBase}${ceAlmStr}${ceOilStr}`;
                 let kcalCena = meals.ceKcal + macros.cena.kcalTotales;
