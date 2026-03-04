@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tracker SIBO & Recomposición</title>
+    
+    <!-- Etiquetas PWA para Instancia Única (Standalone) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tracker SIBO">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0b0c10">
+    <link rel="manifest" href='data:application/manifest+json;utf8,{"name":"Tracker SIBO","short_name":"Tracker","display":"standalone","background_color":"#0b0c10","theme_color":"#ccff00"}'>
+
+    <!-- Carga de Chart.js para las gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Carga de Lucide Icons para iconografía moderna y vectorial -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* Tema Deporte / Eléctrico / Carbono */
+            --bg: #0b0c10; 
+            --surface: #1f2833; 
+            --primary: #ccff00; /* Volt Green / Eléctrico */
+            --secondary: #00e5ff; /* Cyan activo (Déficit) */
+            --error: #ff0055; /* Neón Red/Pink (Superávit) */
+            --text: #c5c6c7;
+            --text-muted: #88929b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 20px; overflow-x: hidden; }
+        
+        /* Header y Hamburger */
+        header { padding: 15px 20px; background-color: var(--surface); border-bottom: 2px solid var(--primary); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 10px rgba(204, 255, 0, 0.1); }
+        .header-left, .header-right { flex: 1; display: flex; align-items: center; }
+        .header-left { justify-content: flex-start; }
+        .header-right { justify-content: flex-end; gap: 10px; }
+        .header-center { flex: 1; text-align: center; font-weight: 900; font-style: italic; color: var(--text); font-size: 18px; letter-spacing: 1px;}
+        
+        .menu-btn { background: none; border: none; color: var(--primary); cursor: pointer; padding: 0 10px 0 0; display: flex; align-items: center;}
+        
+        /* Custom Date Picker Fix */
+        .custom-date-picker { position: relative; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 8px; border: 1px solid #444; color: var(--secondary); font-weight: bold; font-size: 13px; overflow: hidden; cursor: pointer;}
+        .custom-date-picker input[type="date"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+        .custom-date-picker i { width: 18px; height: 18px; color: var(--secondary); }
+        
+        /* Sidebar Menu */
+        .sidebar { position: fixed; top: 0; left: -260px; width: 260px; height: 100vh; background-color: var(--surface); z-index: 200; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 2px 0 15px rgba(0,0,0,0.8); padding-top: 80px; display: flex; flex-direction: column; }
+        .sidebar.open { left: 0; }
+        .sidebar-top { flex: 1; }
+        .sidebar-bottom { margin-top: auto; padding-bottom: 30px; }
+        .sidebar a { display: flex; align-items: center; gap: 15px; padding: 18px 25px; color: var(--text); text-decoration: none; font-size: 16px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.05); transition: all 0.2s; letter-spacing: 1px;}
+        .sidebar a.active { color: var(--bg); border-left: 5px solid var(--primary); background: var(--primary); }
+        .sidebar a i { width: 20px; height: 20px; }
+        .sidebar-author { text-align: center; color: var(--text-muted); font-size: 11px; margin-top: 15px; letter-spacing: 1px; opacity: 0.6; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 150; display: none; backdrop-filter: blur(2px); }
+        .overlay.open { display: block; }
+
+        .container { padding: 20px; }
+        .card { background-color: var(--surface); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); }
+        h2 { margin-bottom: 15px; font-size: 16px; color: var(--primary); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;}
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-muted); font-weight: bold; }
+        input[type="number"], input[type="date"], input[type="text"], select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #0b0c10; color: #fff; font-size: 16px; transition: border 0.3s; }
+        input[type="number"]:focus, input[type="date"]:focus, select:focus { border-color: var(--primary); outline: none; }
+        
+        button { background-color: var(--primary); color: var(--bg); border: none; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 900; width: 100%; cursor: pointer; margin-top: 10px; transition: transform 0.1s, opacity 0.2s; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px;}
+        button:active { transform: scale(0.98); opacity: 0.9; }
+        button.secondary { background-color: var(--secondary); margin-top: 10px; color: var(--bg); }
+        button.danger { background-color: var(--error); color: white; }
+        button.small-btn { padding: 8px 12px; font-size: 12px; margin-top: 0; width: auto; background-color: #333; color: white; }
+        button:disabled { background-color: #333 !important; color: #777 !important; cursor: not-allowed; transform: none; opacity: 1; }
+        
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Checkbox list */
+        .check-list > label { display: flex; align-items: flex-start; font-size: 14px; color: var(--text); margin-bottom: 15px; line-height: 1.5; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid #444; font-weight: normal;}
+        .check-list > label.checked-style { border-left-color: var(--primary); }
+        .check-list input { margin-right: 15px; transform: scale(1.6); margin-top: 3px; flex-shrink: 0; accent-color: var(--primary); }
+        .meal-tag { font-weight: 900; color: var(--secondary); display: block; font-size: 12px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 1px;}
+        .meal-kcal { float: right; color: var(--text-muted); font-size: 11px; font-weight: normal; }
+
+        /* Timer */
+        .timer-box { background: #000; padding: 20px; border-radius: 10px; border: 2px solid #333; margin-top: 20px; }
+        .timer-box.active-work { border-color: var(--error); box-shadow: 0 0 20px rgba(255,0,85,0.2); }
+        .timer-box.active-rest { border-color: var(--secondary); box-shadow: 0 0 20px rgba(0,229,255,0.2); }
+        .timer-box.active-paused { border-color: #444; opacity: 0.7; }
+        #timer-display { font-size: 72px; text-align: center; margin: 10px 0; color: var(--primary); font-variant-numeric: tabular-nums; font-weight: 900; font-style: italic; text-shadow: 0 0 10px rgba(204,255,0,0.3); }
+        #exercise-name { text-align: center; font-size: 24px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; color: #fff;}
+        #timer-status { text-align: center; color: var(--text-muted); font-size: 16px; letter-spacing: 2px; font-weight: bold;}
+        .countdown-warning { color: var(--error) !important; text-shadow: 0 0 15px rgba(255,0,85,0.5) !important;}
+        .timer-controls { display: flex; gap: 10px; margin-top: 15px; }
+
+        /* Listas Ejercicios Manuales */
+        .manual-exercise-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 3px solid var(--secondary); }
+        .manual-exercise-item .details { font-size: 13px; color: #ccc; line-height: 1.4; }
+        .manual-exercise-item .details strong { color: var(--secondary); display: block; font-size: 14px; text-transform: uppercase; }
+
+        /* Analítica de Métricas */
+        .metric-block { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px;}
+        .metric-header { font-size: 13px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px;}
+        .metric-main { font-size: 32px; font-weight: 900; margin-bottom: 8px; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .metric-details { font-size: 13px; color: #ccc; line-height: 1.6; display: flex; flex-wrap: wrap; gap: 10px;}
+        .metric-details span { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px;}
+        
+        .val-superavit { color: var(--error) !important; text-shadow: 0 0 15px rgba(255,0,85,0.6) !important; }
+        .val-deficit { color: var(--secondary) !important; text-shadow: 0 0 10px rgba(0,229,255,0.3) !important; }
+
+        /* Toast Notifications */
+        #toast-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; pointer-events: none;}
+        .toast { background-color: var(--primary); color: var(--bg); padding: 12px 25px; border-radius: 30px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s ease-in-out, transform 0.3s; transform: translateY(20px); text-align: center; width: max-content; max-width: 90vw;}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        
+        .chart-container { position: relative; height: 320px; width: 100%; margin-top: 15px; }
+        canvas { background: #000; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+
+        /* Modals Generales */
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index: 9999; display:none; align-items:center; justify-content:center; }
+        .modal-box { background: var(--surface); padding: 25px; border-radius: 12px; border: 2px solid var(--primary); text-align: center; max-width: 90%; width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto;}
+        .modal-box h3 { color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; text-transform: uppercase;}
+        .modal-box p { color: var(--text); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+        .modal-buttons { display: flex; gap: 10px; }
+
+        /* Modal Manual de Ayuda Específico */
+        .help-box { background: #121417; width: 95%; max-width: 600px; max-height: 85vh; text-align: left; position: relative; border-color: var(--secondary); padding: 30px 20px;}
+        .help-box .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; width: auto; padding: 5px; margin: 0; }
+        .help-box .close-btn:hover { color: var(--error); }
+        .help-box h3 { color: var(--secondary); justify-content: flex-start; margin-bottom: 20px; }
+        
+        /* Acordeón de Ayuda */
+        .accordion { margin-top: 15px; }
+        .accordion-item { border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 5px;}
+        .accordion-header { background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; padding: 15px; width: 100%; text-align: left; border: none; outline: none; transition: 0.3s; font-size: 14px; font-weight: bold; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-top: 0;}
+        .accordion-header:hover, .accordion-header.active { background: rgba(0,229,255,0.1); color: var(--secondary); }
+        .accordion-header svg { transition: transform 0.3s ease; }
+        .accordion-header.active svg { transform: rotate(180deg); } /* Animación CSS en lugar de JS */
+        .accordion-content { padding: 0 15px; background-color: transparent; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; font-size: 13px; color: #bbb; line-height: 1.6; }
+        .accordion-content p { margin: 15px 0; color: #bbb;}
+        
+        .infographic-box { background: rgba(204,255,0,0.05); border-left: 3px solid var(--primary); padding: 12px; margin: 15px 0; border-radius: 4px; }
+        .infographic-box strong { color: var(--primary); display: block; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <!-- Modal Configuración Inicial / Revisión de Perfil -->
+    <div id="profile-setup-modal" class="modal-overlay">
+        <div class="modal-box" style="border-color: var(--secondary);">
+            <h3 style="color: var(--secondary);"><i data-lucide="user-cog"></i> Configura tu Perfil</h3>
+            <p id="setup-modal-desc" style="font-size: 12px;">Para activar el menú dinámico y calcular tu gasto calórico real (Ecuación de Katch-McArdle), necesitamos estos datos iniciales.</p>
+            <div class="form-group" style="text-align: left;">
+                <label>Fecha de Nacimiento</label>
+                <input type="date" id="setup-nacimiento" onchange="validarSetup()">
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label>Peso (kg)</label>
+                <input type="number" id="setup-peso" step="0.1" placeholder="Ej. 91.7" oninput="validarSetup()">
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label>Complexión / Grasa Corporal</label>
+                <select id="setup-complexion" onchange="validarSetup()">
+                    <option value="" disabled selected>Selecciona una opción</option>
+                    <option value="15">Atleta / Definido (~15%)</option>
+                    <option value="22">Normal / Promedio (~22%)</option>
+                    <option value="27">Sobrepeso Leve (~27%)</option>
+                    <option value="33">Sobrepeso Moderado (~33%)</option>
+                    <option value="40">Sobrepeso Alto (~40%)</option>
+                </select>
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label>Actividad Laboral / Diaria</label>
+                <select id="setup-actividad" onchange="validarSetup()">
+                    <option value="" disabled selected>Selecciona una opción</option>
+                    <option value="1.2">Baja (Sedentaria, oficina, &lt; 5.000 pasos/día)</option>
+                    <option value="1.375">Media (Movimiento moderado, 5.000 - 10.000 pasos/día)</option>
+                    <option value="1.55">Alta (Trabajo físico activo o deportista)</option>
+                </select>
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label>Intensidad del Objetivo (Déficit)</label>
+                <select id="setup-intensidad-dieta" onchange="validarSetup()">
+                    <option value="" disabled selected>Selecciona una opción</option>
+                    <option value="500">Recomposición Suave (-500 kcal)</option>
+                    <option value="700">Pérdida Sustancial (-700 kcal)</option>
+                    <option value="900">Pérdida Agresiva (-900 kcal)</option>
+                </select>
+            </div>
+            <button id="btn-iniciar-sistema" class="secondary" onclick="guardarPerfilSetup()" disabled><i data-lucide="check-circle"></i> Iniciar Sistema</button>
+        </div>
+    </div>
+
+    <!-- Auto Backup Modal -->
+    <div id="backup-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3><i data-lucide="shield-alert"></i> Copia de Seguridad</h3>
+            <p>Han pasado más de 30 días desde tu última exportación. Recomendamos guardar tus datos ahora para evitar cualquier pérdida.</p>
+            <div class="modal-buttons">
+                <button class="secondary" onclick="postponeBackup()">Más tarde</button>
+                <button onclick="performAutoBackup()"><i data-lucide="download"></i> Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Manual de Ayuda y Usuario -->
+    <div id="help-modal" class="modal-overlay" onclick="cerrarAyudaOutside(event)">
+        <div class="modal-box help-box">
+            <button class="close-btn" onclick="cerrarAyuda()"><i data-lucide="x"></i></button>
+            <h3><i data-lucide="book-open"></i> Manual del Sistema</h3>
+            <p style="font-size: 13px; color: var(--text); border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+                Esta aplicación es un simulador termodinámico avanzado. Combina el control del <strong>SIBO</strong> con la <strong>recomposición corporal</strong>, utilizando datos y modelos científicos para evitar el estancamiento metabólico y proteger tu salud intestinal.
+            </p>
+
+            <div class="accordion">
+                <div class="accordion-item">
+                    <button class="accordion-header">1. El Motor Metabólico (Katch-McArdle) <i data-lucide="chevron-down" style="width:16px; height:16px;"></i></button>
+                    <div class="accordion-content">
+                        <p>No utilizamos fórmulas estándar de IMC. El gasto basal se calcula aislando tu <strong>Masa Libre de Grasa (Masa Magra)</strong> mediante la ecuación clínica de Katch-McArdle. Al cruzar tu peso con la complexión elegida en el perfil, el sistema sabe exactamente cuánta energía demanda el 'motor' muscular de tu cuerpo en reposo absoluto.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header">2. Protección SIBO y el CMM <i data-lucide="chevron-down" style="width:16px; height:16px;"></i></button>
+                    <div class="accordion-content">
+                        <p><strong>La Regla de Oro:</strong> La aplicación nunca permitirá que tu objetivo de ingesta caiga por debajo de tu Metabolismo Basal (BMR). Si el déficit configurado es demasiado agresivo para los días sedentarios, el algoritmo interviene e iguala las calorías al BMR.</p>
+                        <p>Esto protege el <strong>Complejo Motor Migratorio (CMM)</strong>, el sistema eléctrico natural de limpieza de tu intestino delgado, el cual se apaga y favorece la proliferación bacteriana (SIBO) ante déficits calóricos extremos sostenidos.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header">3. Dieta Elástica (60/40) <i data-lucide="chevron-down" style="width:16px; height:16px;"></i></button>
+                    <div class="accordion-content">
+                        <p>El menú no es fijo; se ajusta dinámicamente. Si registras entrenamiento, la energía extra quemada se inyecta directamente en el presupuesto de tu <strong>Cena</strong> para facilitar la recuperación nocturna.</p>
+                        <p>Esta energía excedente se distribuye de forma algorítmica: <strong>60% a los almidones (glucógeno) y 40% a las grasas (AOVE)</strong>. Por seguridad gastrointestinal, la app bloquea matemáticamente la adición a un máximo de 200g de arroz/patata y 30ml de aceite por toma, para evitar hinchazón abdominal.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header">4. Ejercicio y Cálculo de METs <i data-lucide="chevron-down" style="width:16px; height:16px;"></i></button>
+                    <div class="accordion-content">
+                        <p>La sección de actividad manual utiliza la métrica <strong>MET (Equivalente Metabólico de Tarea)</strong>. El gasto no es estático; se multiplica por tu peso actual y el factor de intensidad seleccionado:</p>
+                        <ul style="margin-left: 20px; margin-bottom: 15px;">
+                            <li><strong>Baja (Factor 0.7):</strong> Ritmo de paseo, relajado, sin esfuerzo cardiovascular notable.</li>
+                            <li><strong>Media (Factor 1.0):</strong> Ritmo constante, esfuerzo habitual.</li>
+                            <li><strong>Alta (Factor 1.3):</strong> Fuerte demanda anaeróbica, alta sudoración, partido competitivo.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header">5. Gestión de Excesos ('Me he pasado') <i data-lucide="chevron-down" style="width:16px; height:16px;"></i></button>
+                    <div class="accordion-content">
+                        <p>El objetivo de este botón es mantener la <strong>honestidad del dato semanal</strong> y la integridad de la gráfica. Reflejar un capricho o una cena copiosa permite al algoritmo calcular el impacto real.</p>
+                        <p>Recuerda: Si la báscula sube abruptamente tras un exceso, en su inmensa mayoría es 'ruido' hídrico (retención por inflamación gastrointestinal, reposición aguda de glucógeno y picos de sodio), no síntesis de tejido adiposo (grasa real). Con un retorno al plan y una caminata para reactivar la motilidad, la curva volverá a su cauce en 48-72h.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--primary); margin-top: 25px; font-size: 15px;"><i data-lucide="dumbbell"></i> Filosofía del Entrenamiento</h3>
+            <div style="font-size: 13px; color: #bbb; line-height: 1.6; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-left: 3px solid var(--secondary);">
+                <p style="margin-bottom: 12px; color: #fff;">Este programa no utiliza el volumen de entrenamiento tradicional, sino la <strong>Dosis Mínima Eficaz</strong> (DME) para obtener una respuesta metabólica máxima con el mínimo estrés sistémico.</p>
+                
+                <p style="margin-bottom: 12px;"><strong style="color: var(--secondary);">El Objetivo:</strong> El diseño se centra en dos pilares: la translocación de transportadores <strong>GLUT4</strong> mediante el HIIT (para mejorar drásticamente la sensibilidad a la insulina y la flexibilidad metabólica) y el reclutamiento de unidades motoras de alto umbral mediante isometría (para señalizar al cuerpo que mantenga la masa muscular durante el déficit calórico). Todo esto se ejecuta en sesiones breves para evitar picos prolongados de cortisol que desactivarían el <strong>CMM</strong>, asegurando que el ejercicio sea un aliado de tu recuperación digestiva y no un obstáculo.</p>
+                
+                <p><strong style="color: var(--error);">Lo que NO es el Objetivo:</strong> Este sistema no busca la hipertrofia pura (culturismo) ni pretende ser la fuente principal de gasto calórico del día. No está diseñado para "quemar calorías" durante la sesión, sino para reprogramar tu metabolismo y proteger tus articulaciones (especialmente muñecas y hombros) mediante tensión controlada sin impacto.</p>
+            </div>
+
+            <h3 style="color: var(--primary); margin-top: 25px; font-size: 15px;"><i data-lucide="server-cog"></i> Reglas Inmutables del Sistema</h3>
+            <div class="infographic-box">
+                <strong>1. Inmutabilidad Histórica</strong>
+                Lo que pasó ayer, se queda en ayer. Los registros pasados están térmicamente sellados. Si hoy bajas 2 kilos y cambias de peso, tu gasto metabólico baja hoy, pero el balance de ayer se mantiene intacto con el cuerpo que tenías ayer.
+            </div>
+            <div class="infographic-box">
+                <strong>2. Snapshot Metabólico</strong>
+                Cada noche, al guardar un dato o cambiar el día, la app toma una "fotografía" (Snapshot) de tu Metabolismo Basal actual y la graba permanentemente en ese día concreto.
+            </div>
+            <div class="infographic-box">
+                <strong>3. Revisión Trimestral</strong>
+                Por bioseguridad del modelo de Katch-McArdle, el sistema obligará a abrir la ventana de configuración del Perfil cada 90 días (trimestre). Esto fuerza la recalibración del peso, % de grasa y actividad para evitar estancamientos silenciosos.
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-left">
+            <button class="menu-btn" onclick="toggleMenu()"><i data-lucide="menu"></i></button>
+        </div>
+        <div class="header-center">TRACKER</div>
+        
+        <div class="header-right">
+            <span id="date-text" style="font-weight: bold; font-size: 14px; color: var(--text);">Cargando...</span>
+            <label style="position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; cursor: pointer; color: var(--secondary); background: rgba(0,229,255,0.1); border-radius: 5px;">
+                <i data-lucide="calendar"></i>
+                <input type="date" id="date-picker" onchange="cambiarFechaManual()" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; z-index: 10;">
+            </label>
+        </div>
+    </header>
+
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <a href="#" id="nav-calendario" class="active" onclick="switchTab('calendario')"><i data-lucide="utensils"></i> NUTRICIÓN</a>
+            <a href="#" id="nav-entrenamiento" onclick="switchTab('entrenamiento')"><i data-lucide="activity"></i> DEPORTE</a>
+            <a href="#" id="nav-metricas" onclick="switchTab('metricas')"><i data-lucide="bar-chart-2"></i> MÉTRICAS</a>
+        </div>
+        <div class="sidebar-bottom">
+            <a href="#" id="nav-perfil" onclick="switchTab('perfil')"><i data-lucide="user"></i> PERFIL</a>
+            <a href="#" id="nav-exportacion" onclick="switchTab('exportacion')"><i data-lucide="hard-drive"></i> DATOS</a>
+            <a href="#" onclick="abrirAyuda()"><i data-lucide="help-circle"></i> MANUAL Y AYUDA</a>
+            <div class="sidebar-author">by Andoni Talavera 2026</div>
+        </div>
+    </div>
+
+    <!-- NUTRICIÓN (Dieta, Peso, Alcohol, Excesos) -->
+    <div id="tab-calendario" class="container tab-content active">
+        <div class="card">
+            <h2><i data-lucide="gauge"></i> Registro de Peso</h2>
+            <div class="form-group">
+                <input type="number" id="input-peso" step="0.1" placeholder="Ej. 91.7">
+                <button onclick="guardarPeso()">Guardar Peso</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 id="titulo-plan-comida"><i data-lucide="list"></i> Alimentación</h2>
+            
+            <div id="sibo-valve-warning" style="display:none; background: rgba(204,255,0,0.1); border: 1px solid var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; color: var(--primary);">
+                <i data-lucide="shield-alert" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; color: var(--error);"></i> 
+                <span style="vertical-align: middle;"><strong>Protección SIBO Activa:</strong> La ingesta se ha igualado a tu TMB para proteger el Complejo Motor Migratorio.</span>
+            </div>
+
+            <div class="check-list" id="dieta-list">
+                <!-- Se llena por JS dinámicamente -->
+            </div>
+            
+            <div id="fin-de-semana-dieta" style="display:none;">
+                <label>Ingesta Fin de Semana:</label>
+                <select id="select-finde">
+                    <option value="1600">Ligero (~1600 kcal) - Plan Base</option>
+                    <option value="2100">Moderado (~2100 kcal)</option>
+                    <option value="3000">Excesivo (~3000 kcal)</option>
+                </select>
+                <button onclick="guardarIngestaFinde()">Guardar Ingesta</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i data-lucide="beer"></i> Alcohol</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Si hoy no bebes nada, no hace falta que guardes nada (se registra como 0 automáticamente).</p>
+            <div class="form-group">
+                <label>Tipo de bebida</label>
+                <select id="select-alcohol" onchange="toggleAlcoholInput()">
+                    <option value="0">Nada (0 kcal)</option>
+                    <option value="0.43">Cerveza (0.43 kcal/mL)</option>
+                    <option value="0.85">Vino (0.85 kcal/mL)</option>
+                </select>
+            </div>
+            <div class="form-group" id="ml-container" style="display:none;">
+                <label>Cantidad (mL)</label>
+                <input type="number" id="input-ml" placeholder="Ej. 330">
+            </div>
+            <button class="danger" onclick="guardarAlcohol()">Registrar Consumo</button>
+        </div>
+
+        <div class="card">
+            <h2><i data-lucide="alert-triangle"></i> Hoy me he pasado (Excesos)</h2>
+            <div id="alerta-motilidad" style="display:none; background: rgba(255,0,85,0.1); border: 1px solid var(--error); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; color: var(--error);">
+                <i data-lucide="siren" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> 
+                <span style="vertical-align: middle;"><strong>Alerta de Motilidad:</strong> El exceso de harinas y/o alcohol detendrá el CMM. Se recomienda ayuno de 12h y caminata suave.</span>
+            </div>
+            <div class="form-group">
+                <select id="select-exceso" onchange="manejarAlertaMotilidadUI()">
+                    <option value="0">Ninguno (0 kcal)</option>
+                    <option value="300">Capricho ligero (+300 kcal): postre, unas onzas de chocolate, picoteo pequeño...</option>
+                    <option value="850">Comida basura / embutidos (+850 kcal): menú hamburguesa, kebab, pizzas, embutidos varios con pan...</option>
+                    <option value="1200">Evento completo (+1200 kcal): tapeo previo, comida intensa de varios platos, postre, licores</option>
+                </select>
+            </div>
+            <button class="danger" onclick="guardarExceso()">Registrar Exceso</button>
+        </div>
+    </div>
+
+    <!-- ENTRENAMIENTO -->
+    <div id="tab-entrenamiento" class="container tab-content">
+        <div class="card" id="card-entrenamiento-app">
+            <h2 id="titulo-entrenamiento"><i data-lucide="dumbbell"></i> Cargando...</h2>
+            <div id="detalle-entrenamiento" style="margin-bottom: 20px;"></div>
+            
+            <div class="check-list" id="check-ejercicio-container">
+                <label id="lbl-check-ej" class=""><input type="checkbox" id="check-ejercicio" onchange="guardarEjercicio()"> <span style="font-weight: bold; margin-top:2px;">Entrenamiento Completado</span></label>
+            </div>
+
+            <!-- TIMER UI -->
+            <div id="timer-container" class="timer-box" style="display:none;">
+                <div id="timer-status">CARGANDO...</div>
+                <div id="exercise-name">PREPARADO</div>
+                <div id="timer-display">00:00</div>
+                <div class="timer-controls">
+                    <button id="btn-timer" onclick="toggleTimer()"><i data-lucide="play"></i> INICIAR</button>
+                    <button id="btn-pause" class="secondary" onclick="pauseTimer()" style="display:none;"><i data-lucide="pause"></i> PAUSAR</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i data-lucide="plus-circle"></i> Añadir Actividad Manual</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Calculadora termodinámica basada en Equivalentes Metabólicos (METs).</p>
+            <div class="form-group">
+                <label>Deporte</label>
+                <select id="select-deporte">
+                    <option value="Pádel">Pádel</option>
+                    <option value="Fútbol">Fútbol</option>
+                    <option value="Running">Running</option>
+                    <option value="Ciclismo">Ciclismo</option>
+                    <option value="Caminar">Caminar</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Duración (minutos)</label>
+                <input type="number" id="input-duracion" placeholder="Ej. 60">
+            </div>
+            <div class="form-group">
+                <label>Intensidad</label>
+                <select id="select-intensidad">
+                    <option value="0.7">Baja (Relajado)</option>
+                    <option value="1.0" selected>Media (Normal)</option>
+                    <option value="1.3">Alta (Competitivo/Fuerte)</option>
+                </select>
+            </div>
+            <button onclick="guardarEjercicioManual()"><i data-lucide="activity"></i> Registrar Actividad</button>
+            <div id="lista-ejercicios-manuales"></div>
+        </div>
+    </div>
+
+    <!-- METRICAS -->
+    <div id="tab-metricas" class="container tab-content">
+        <div class="card">
+            <h2><i data-lucide="calculator"></i> Balances Estimados</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Un balance en color <span style="color:var(--error); font-weight:bold;">rojo intenso</span> indica superávit calórico (alerta). Un balance azul indica déficit (pérdida de grasa).</p>
+            
+            <div class="metric-block" style="background: rgba(0,229,255,0.05); border-color: rgba(0,229,255,0.2);">
+                <div class="metric-header" style="color: var(--secondary);">PÉRDIDA DE PESO SEMANAL (TEÓRICO VS REAL)</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Teórico</div>
+                        <div id="proyeccion-teorica" class="metric-main" style="font-size: 24px; margin-bottom: 0; display: flex; align-items: center; gap: 6px;">0.00 kg</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Real (Últ. 7 días)</div>
+                        <div id="perdida-real" class="metric-main" style="font-size: 24px; margin-bottom: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px;">0.00 kg</div>
+                    </div>
+                </div>
+                <div class="metric-details" style="color: var(--text-muted); font-size: 11px; border-top: 1px solid rgba(0,229,255,0.1); padding-top: 8px; margin-top: 8px;">
+                    * El cálculo Teórico asume adherencia exacta. El Real requiere al menos 2 registros de peso en los últimos 7 días.
+                </div>
+            </div>
+
+            <div class="metric-block">
+                <div class="metric-header">Balance Diario (Hoy)</div>
+                <div id="val-neto-dia" class="metric-main">0 kcal</div>
+                <div class="metric-details" id="det-dia"></div>
+            </div>
+
+            <div class="metric-block">
+                <div class="metric-header">Balance Semanal Acumulado</div>
+                <div id="val-neto-semana" class="metric-main">0 kcal</div>
+                <div class="metric-details" id="det-semana"></div>
+            </div>
+
+            <div class="metric-block">
+                <div class="metric-header">Balance Mensual y Hábitos</div>
+                <div id="val-neto-mes" class="metric-main">0 kcal</div>
+                <div class="metric-details" id="det-mes"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2><i data-lucide="trending-up"></i> Evolución (Peso vs Calorías)</h2>
+            <div class="chart-container">
+                <canvas id="metricsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERFIL FISIOLÓGICO -->
+    <div id="tab-perfil" class="container tab-content">
+        <div class="card">
+            <h2><i data-lucide="user"></i> Tu Perfil Fisiológico</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Configura tu edad, complexión e intensidad. El peso se sincroniza dinámicamente con el último valor que hayas guardado en la pestaña de nutrición.</p>
+            
+            <div class="form-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="date" id="perfil-nacimiento">
+            </div>
+            <div class="form-group">
+                <label>Complexión / Grasa Corporal</label>
+                <select id="perfil-complexion">
+                    <option value="15">Atleta / Definido (~15%)</option>
+                    <option value="22">Normal / Promedio (~22%)</option>
+                    <option value="27">Sobrepeso Leve (~27%)</option>
+                    <option value="33">Sobrepeso Moderado (~33%)</option>
+                    <option value="40">Sobrepeso Alto (~40%)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Actividad Laboral / Diaria</label>
+                <select id="perfil-actividad">
+                    <option value="1.2">Baja (Sedentaria, oficina, &lt; 5.000 pasos/día)</option>
+                    <option value="1.375">Media (Movimiento moderado, 5.000 - 10.000 pasos/día)</option>
+                    <option value="1.55">Alta (Trabajo físico activo o deportista)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Intensidad del Objetivo (Déficit)</label>
+                <select id="perfil-intensidad-dieta">
+                    <option value="500">Recomposición Suave (-500 kcal)</option>
+                    <option value="700">Pérdida Sustancial (-700 kcal)</option>
+                    <option value="900">Pérdida Agresiva (-900 kcal)</option>
+                </select>
+            </div>
+            <button onclick="guardarPerfilTab()"><i data-lucide="save"></i> Guardar Perfil</button>
+        </div>
+
+        <div class="card">
+            <h2><i data-lucide="activity"></i> Datos Biométricos Actuales</h2>
+            <div class="metric-block" style="background: rgba(0,229,255,0.1); border-color: var(--secondary);">
+                <div class="metric-header" style="color: var(--secondary);">Mantenimiento Actual (Katch-McArdle)</div>
+                <div id="perfil-tmb-display" class="metric-main" style="color: var(--secondary);">0 kcal</div>
+                <div class="metric-details" id="perfil-detalles" style="color: #fff;">
+                    <!-- Se inyecta por JS -->
+                </div>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 15px;">* El cálculo se basa en la ecuación clínica de Katch-McArdle que aisla la masa libre de grasa. Los cambios afectan al gasto de hoy en adelante, manteniendo intactos mediante un "sello termodinámico" los balances de los días pasados.</p>
+        </div>
+    </div>
+
+    <!-- EXPORTACION -->
+    <div id="tab-exportacion" class="container tab-content">
+        <div class="card">
+            <h2><i data-lucide="database"></i> Gestión de Datos</h2>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Copia tus registros al portapapeles para guardarlos en un bloc de notas y pégalos aquí cuando necesites recuperarlos.</p>
+            <button onclick="exportarDatos()"><i data-lucide="copy"></i> Copiar Datos (Exportar)</button>
+            <button class="secondary" onclick="toggleImportArea()"><i data-lucide="clipboard-paste"></i> Pegar Datos (Importar)</button>
+            
+            <div id="import-area" style="display:none; margin-top: 15px; animation: fadeIn 0.3s;">
+                <textarea id="import-text" rows="5" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #0b0c10; color: #fff; font-family: monospace; font-size: 12px; resize: vertical;" placeholder="Pega aquí el código JSON previamente copiado..."></textarea>
+                <button class="danger" onclick="procesarImportacionTexto()"><i data-lucide="check-circle"></i> Confirmar Sobrescritura</button>
+            </div>
+            <p style="font-size: 12px; color: var(--error); margin-top: 20px;">Cuidado: Importar un código sobrescribirá los datos actuales del navegador.</p>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+        const FECHA_INICIO = new Date('2026-03-02T00:00:00'); 
+
+        // Diccionario de Densidades Calóricas
+        const DENSIDADES = { ARROZ: 1.3, PATATA: 0.8, TORTITAS: 3.8, ACEITE: 9, FIJO: 595, PROT_VEG: 400 };
+
+        // Base de Datos de METs (Equivalentes Metabólicos)
+        const DEPORTES_MET = { "Pádel": 7.0, "Fútbol": 8.0, "Running": 9.0, "Caminar": 4.0, "Ciclismo": 7.5 };
+
+        const dietaFija = {
+            desayuno: { desc: "1 scoop Whey ISO + 200ml leche s/l + 30g avena + 40g uvas + canela", kcal: 345 },
+            almuerzo: { desc: "1 scoop Whey (agua) + 3 rodajas piña natural + 2 tortitas arroz", kcal: 250 }
+        };
+
+        const dietaVariable = {
+            A: {
+                L: { comidaBase: "Pollo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Espinaca 150g + 120g Atún", almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "Ternera 180g + Calabacín 250g", almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "120g Atún + 120g Tomate natural", almidonCena: "patata" },
+                X: { comidaBase: "Merluza 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "120g Atún + 120g Tomate natural", almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "Lomo 180g + Pimientos 200g", almidonComida: "arroz", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate natural", almidonCena: "patata" },
+                V: { comidaBase: "Gambas 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "150g Salmón + Judía 200g", almidonCena: "tortitas de arroz" }
+            },
+            B: {
+                L: { comidaBase: "Salmón 150g + Espárragos 200g", almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "2 Huevos + 80g Atún", almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "Pollo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Nueces", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", almidonCena: "tortitas de arroz" },
+                X: { comidaBase: "Ternera 180g + Pimientos", almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "180g Lomo + Judía 200g", almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "Gambas 200g", almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "150g Salmón + Calabacín", almidonCena: "tortitas de arroz" },
+                V: { comidaBase: "Pollo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Almendras", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", almidonCena: "tortitas de arroz" }
+            },
+            C: {
+                L: { comidaBase: "Pavo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "15g Nueces", kcal: 100 }, cenaBase: "200g Gambas + Espinaca", almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "Ternera 180g + Espárragos", almidonComida: "patata", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Pimientos", almidonCena: "tortitas de arroz" },
+                X: { comidaBase: "Salmón 150g + Alcachofa", almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "180g Pollo + Calabacín", almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "Lomo 180g + Pimientos", almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate", almidonCena: "tortitas de arroz" },
+                V: { comidaBase: "Merluza 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "180g Ternera + Espinaca", almidonCena: "tortitas de arroz" }
+            }
+        };
+
+        const rutinasDeporte = {
+            A1: { icono: "dumbbell", titulo: "CIRCUITO A1 (FUERZA)", desc: "Recomposición: 5 ejercicios, 4 vueltas (45\" ON / 15\" OFF). Variante Wall Sit.", ejercicios: ["Flexión Isométrica", "Remo invertido en mesa", "Wall Sit", "Bíceps Martillo", "Bird-Dog (pierna/brazo alternos)"] },
+            A2: { icono: "dumbbell", titulo: "CIRCUITO A2 (FUERZA)", desc: "Recomposición: 5 ejercicios, 4 vueltas (45\" ON / 15\" OFF). Variante Puente de Glúteo.", ejercicios: ["Flexión Isométrica", "Remo invertido en mesa", "Puente de Glúteo", "Bíceps Martillo", "Bird-Dog (pierna/brazo alternos)"] },
+            B1: { icono: "flame", titulo: "CIRCUITO B1 (HIIT TÁBATA)", desc: "Metabólico: 4 ejercicios, 16 rondas (20\" ON / 10\" OFF). Variante Skater/Shadow.", ejercicios: ["Sentadilla", "Escaladores", "Skater lateral sin salto", "Shadow boxing"], estiramientos: ["Zancada baja (Low Lunge): 1+1 min", "Estiramiento isquiosurales a una pierna: 1+1 min", "Figura 4 en decúbito supino: 1+1 min", "Sentadilla profunda asistida: 1+1 min", "Apertura torácica 'Libro abierto': 1+1 min", "Estiramiento de pectoral en marco: 1+1 min"] },
+            B2: { icono: "flame", titulo: "CIRCUITO B2 (HIIT TÁBATA)", desc: "Metabólico: 4 ejercicios, 16 rondas (20\" ON / 10\" OFF). Variante Lunge/Knees.", ejercicios: ["Sentadilla", "Step-back lunge (no forward)", "Mountain climbers", "High knees en sitio"], estiramientos: ["Zancada baja (Low Lunge): 1+1 min", "Estiramiento isquiosurales a una pierna: 1+1 min", "Figura 4 en decúbito supino: 1+1 min", "Sentadilla profunda asistida: 1+1 min", "Apertura torácica 'Libro abierto': 1+1 min", "Estiramiento de pectoral en marco: 1+1 min"] }
+        };
+
+        let db = JSON.parse(localStorage.getItem('siboTracker')) || {};
+        
+        let timerInterval;
+        let isTimerRunning = false;
+        let isTimerPaused = false;
+        let phase = 'PRESTART';
+        let totalRounds = 0;
+        let currentRound = 0;
+        let timeLeft = 0;
+        let audioCtx;
+        let chartInstance = null;
+        let wakeLock = null; 
+        
+        let currentActiveDay = "";
+
+        // Inicialización de Lógica de Acordeón
+        function initAccordion() {
+            const acc = document.querySelectorAll(".accordion-header");
+            acc.forEach(btn => {
+                btn.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    const panel = this.nextElementSibling;
+                    if (panel.style.maxHeight) {
+                        panel.style.maxHeight = null;
+                    } else {
+                        panel.style.maxHeight = panel.scrollHeight + "px";
+                    }
+                });
+            });
+        }
+
+        // Funciones del Modal de Ayuda
+        function abrirAyuda() {
+            document.getElementById('help-modal').style.display = 'flex';
+            toggleMenu(); // Cierra el sidebar lateral si estaba abierto
+            lucide.createIcons();
+        }
+
+        function cerrarAyuda() {
+            document.getElementById('help-modal').style.display = 'none';
+        }
+
+        function cerrarAyudaOutside(event) {
+            if (event.target === document.getElementById('help-modal')) {
+                cerrarAyuda();
+            }
+        }
+
+        // Sincronización continua de la fecha actual
+        function checkAndSyncDate() {
+            const hoyStr = new Date().toISOString().split('T')[0];
+            if (currentActiveDay !== hoyStr) {
+                currentActiveDay = hoyStr;
+                document.getElementById('date-picker').value = hoyStr;
+                actualizarUI();
+            }
+        }
+
+        function cambiarFechaManual() {
+            if (isTimerRunning) toggleTimer(); 
+            currentActiveDay = document.getElementById('date-picker').value;
+            actualizarUI();
+        }
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); }
+            } catch (err) { console.log('Wake Lock API no soportada', err); }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); }
+        }
+
+        function init() {
+            lucide.createIcons(); 
+            initAccordion();
+            
+            // Inicializar el reloj sincronizador de medianoche (valida cada 60s)
+            currentActiveDay = new Date().toISOString().split('T')[0];
+            document.getElementById('date-picker').value = currentActiveDay;
+            setInterval(checkAndSyncDate, 60000);
+            
+            // Forzar actualización si se vuelve a primer plano tras la medianoche
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === 'visible') { checkAndSyncDate(); }
+            });
+            
+            // Verificar perfil inicial o revisión de 90 días
+            if (!db.profile || !db.profile.fechaNacimiento || !db.profile.pesoInicial || !db.profile.intensidadObjetivo) {
+                document.getElementById('profile-setup-modal').style.display = 'flex';
+                document.getElementById('setup-modal-desc').innerText = "Para activar el menú dinámico y calcular tu gasto calórico real (Ecuación de Katch-McArdle), necesitamos estos datos iniciales.";
+            } else {
+                actualizarUI();
+                checkAutoExport();
+                verificarRevisionPerfil();
+            }
+        }
+
+        function verificarRevisionPerfil() {
+            if (!db.profile) return;
+            const now = Date.now();
+            const lastRev = db.profile.ultimaRevision || 0;
+            const limit = 90 * 24 * 60 * 60 * 1000; // 90 días en ms
+
+            if (now - lastRev > limit) {
+                document.getElementById('setup-nacimiento').value = db.profile.fechaNacimiento;
+                document.getElementById('setup-peso').value = getPesoActual();
+                document.getElementById('setup-complexion').value = db.profile.grasaPercent;
+                document.getElementById('setup-actividad').value = db.profile.factorActividad;
+                document.getElementById('setup-intensidad-dieta').value = db.profile.intensidadObjetivo;
+                
+                document.getElementById('setup-modal-desc').innerText = "Vamos a repasar tus datos por si algo ha cambiado (peso, grasa, actividad).";
+                document.getElementById('btn-iniciar-sistema').innerHTML = `<i data-lucide="check-circle"></i> Confirmar Datos`;
+                
+                validarSetup();
+                document.getElementById('profile-setup-modal').style.display = 'flex';
+                lucide.createIcons();
+            }
+        }
+
+        // --- SISTEMA DINÁMICO DE PERFIL Y METABOLISMO ---
+        function calcularEdad() {
+            if (!db.profile || !db.profile.fechaNacimiento) return 43; 
+            const nac = new Date(db.profile.fechaNacimiento);
+            const hoy = new Date();
+            let edad = hoy.getFullYear() - nac.getFullYear();
+            const m = hoy.getMonth() - nac.getMonth();
+            if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+            return edad;
+        }
+
+        function getPesoActual() {
+            let peso = db.profile && db.profile.pesoInicial ? parseFloat(db.profile.pesoInicial) : 91.7; 
+            const sortedDates = Object.keys(db).filter(k => k !== 'profile' && k !== 'profileSetup').sort();
+            for (let i = sortedDates.length - 1; i >= 0; i--) {
+                if (db[sortedDates[i]].peso) {
+                    peso = parseFloat(db[sortedDates[i]].peso);
+                    break;
+                }
+            }
+            return peso;
+        }
+
+        function calcularTMB() {
+            const pesoDinamico = getPesoActual();
+            const grasaPercent = db.profile && db.profile.grasaPercent ? parseFloat(db.profile.grasaPercent) : 22;
+            const lbm = pesoDinamico * (1 - (grasaPercent / 100));
+            return 370 + (21.6 * lbm);
+        }
+
+        function calcularMantenimientoActual() {
+            const factorActividad = db.profile && db.profile.factorActividad ? parseFloat(db.profile.factorActividad) : 1.2;
+            return Math.round(calcularTMB() * factorActividad);
+        }
+
+        function validarSetup() {
+            const nac = document.getElementById('setup-nacimiento').value;
+            const peso = document.getElementById('setup-peso').value;
+            const comp = document.getElementById('setup-complexion').value;
+            const act = document.getElementById('setup-actividad').value;
+            const int = document.getElementById('setup-intensidad-dieta').value;
+            
+            const btn = document.getElementById('btn-iniciar-sistema');
+            if (nac && peso && comp && act && int) {
+                btn.disabled = false;
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        function guardarPerfilSetup() {
+            const nac = document.getElementById('setup-nacimiento').value;
+            const pesoIni = parseFloat(document.getElementById('setup-peso').value);
+            const comp = parseFloat(document.getElementById('setup-complexion').value);
+            const act = parseFloat(document.getElementById('setup-actividad').value);
+            const int = parseFloat(document.getElementById('setup-intensidad-dieta').value);
+            
+            if (!nac || !pesoIni || !comp || !act || !int) { showToast("Debes completar todos los campos"); return; }
+            
+            db.profile = { 
+                fechaNacimiento: nac, 
+                pesoInicial: pesoIni, 
+                grasaPercent: comp, 
+                factorActividad: act, 
+                intensidadObjetivo: int,
+                ultimaRevision: Date.now()
+            };
+            sync();
+            
+            if (!localStorage.getItem('siboTracker_lastExport')) {
+                localStorage.setItem('siboTracker_lastExport', Date.now().toString());
+            }
+
+            document.getElementById('btn-iniciar-sistema').innerHTML = `<i data-lucide="check-circle"></i> Iniciar Sistema`;
+            document.getElementById('profile-setup-modal').style.display = 'none';
+            actualizarUI();
+            checkAutoExport();
+            showToast("Perfil actualizado correctamente.");
+        }
+
+        function guardarPerfilTab() {
+            const nac = document.getElementById('perfil-nacimiento').value;
+            const comp = parseFloat(document.getElementById('perfil-complexion').value);
+            const act = parseFloat(document.getElementById('perfil-actividad').value);
+            const int = parseFloat(document.getElementById('perfil-intensidad-dieta').value);
+            
+            if (!nac || !comp || !act || !int) { showToast("Debes completar todos los campos"); return; }
+            
+            db.profile.fechaNacimiento = nac;
+            db.profile.grasaPercent = comp;
+            db.profile.factorActividad = act;
+            db.profile.intensidadObjetivo = int;
+            db.profile.ultimaRevision = Date.now();
+            sync();
+            actualizarUI();
+            
+            if (document.getElementById('tab-metricas').classList.contains('active')) renderMetricas();
+            showToast("Perfil fisiológico actualizado.");
+        }
+
+        function checkAutoExport() {
+            let lastExport = localStorage.getItem('siboTracker_lastExport');
+            const now = Date.now();
+            if (!lastExport) {
+                localStorage.setItem('siboTracker_lastExport', now.toString());
+                return;
+            }
+            if ((now - parseInt(lastExport)) > 2592000000) { document.getElementById('backup-modal').style.display = 'flex'; }
+        }
+
+        function performAutoBackup() {
+            exportarDatos();
+            document.getElementById('backup-modal').style.display = 'none';
+        }
+
+        function postponeBackup() {
+            const now = Date.now();
+            const triggerEnUnDia = now - 2592000000 + 86400000;
+            localStorage.setItem('siboTracker_lastExport', triggerEnUnDia.toString());
+            document.getElementById('backup-modal').style.display = 'none';
+        }
+
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('open');
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.sidebar a').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            
+            let mapIds = {'calendario':'nav-calendario', 'entrenamiento':'nav-entrenamiento', 'metricas':'nav-metricas', 'perfil':'nav-perfil', 'exportacion':'nav-exportacion'};
+            document.getElementById(mapIds[tabId]).classList.add('active');
+            
+            if (tabId === 'metricas') renderMetricas();
+            toggleMenu(); 
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast show';
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function getInfoDia(dateStr = null) {
+            const targetDate = new Date(dateStr || currentActiveDay);
+            const diaNum = targetDate.getDay(); 
+            
+            const utcTarget = Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+            const utcInicio = Date.UTC(FECHA_INICIO.getFullYear(), FECHA_INICIO.getMonth(), FECHA_INICIO.getDate());
+            
+            const diffDias = Math.floor((utcTarget - utcInicio) / (1000 * 60 * 60 * 24));
+            const diasAbsolutos = diffDias >= 0 ? diffDias : (diffDias % 21 + 21);
+            
+            const semanaCiclo = Math.floor(diasAbsolutos / 7) % 3;
+            const planes = ['A', 'B', 'C'];
+            const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+            
+            const semanasPasadas = Math.floor(diffDias / 7);
+            let rutinaDeporte = null;
+            if (diaNum >= 1 && diaNum <= 5) {
+                const esSemanaPar = (semanasPasadas % 2 === 0);
+                if (esSemanaPar) {
+                    const patronSemana1 = { 1: 'A1', 2: 'B1', 3: 'A2', 4: 'B2', 5: 'A1' };
+                    rutinaDeporte = patronSemana1[diaNum];
+                } else {
+                    const patronSemana2 = { 1: 'A2', 2: 'B2', 3: 'A1', 4: 'B1', 5: 'A2' };
+                    rutinaDeporte = patronSemana2[diaNum];
+                }
+            }
+            
+            return {
+                fechaObj: targetDate,
+                fechaString: targetDate.toISOString().split('T')[0],
+                diaLetra: diasSemana[diaNum],
+                esFinde: diaNum === 0 || diaNum === 6,
+                planActivo: planes[semanaCiclo],
+                rutinaDeporte: rutinaDeporte
+            };
+        }
+
+        function initDayDB(fechaStr) {
+            if (!db[fechaStr]) {
+                db[fechaStr] = { 
+                    peso: null, 
+                    comidas: { desayuno: false, almuerzo: false, comida: false, merienda: false, cena: false }, 
+                    ejercicio: false,
+                    ejerciciosManuales: [], 
+                    alcoholKcal: 0, 
+                    alcoholMl: 0,
+                    alcoholType: "0",
+                    excesoKcal: 0,
+                    extraKcal: 0, 
+                    findeGuardado: false,
+                    ejercicioKcal: 0 
+                };
+            } else {
+                if(!db[fechaStr].ejerciciosManuales) db[fechaStr].ejerciciosManuales = [];
+                if(db[fechaStr].excesoKcal === undefined) db[fechaStr].excesoKcal = 0;
+            }
+        }
+
+        function toggleAlcoholInput() {
+            document.getElementById('ml-container').style.display = document.getElementById('select-alcohol').value != "0" ? "block" : "none";
+        }
+
+        function buildMealHTML(id, label, desc, isChecked, kcal) {
+            const checkedClass = isChecked ? 'checked-style' : '';
+            const checkedAttr = isChecked ? 'checked' : '';
+            return `
+                <label id="lbl-${id}" class="${checkedClass}">
+                    <input type="checkbox" id="chk-${id}" onchange="guardarDieta('${id}')" ${checkedAttr}> 
+                    <div style="width: 100%;"><span class="meal-tag">${label} <span class="meal-kcal">+${kcal} kcal</span></span>${desc}</div>
+                </label>
+            `;
+        }
+
+        // --- SISTEMA DE MENÚ ELÁSTICO E HÍBRIDO (60/40) ---
+        function distribuirComida(budgetKcal, tipoAlmidon) {
+            let densAlmidon = DENSIDADES.ARROZ;
+            if (tipoAlmidon.includes('patata')) densAlmidon = DENSIDADES.PATATA;
+            if (tipoAlmidon.includes('tortita')) densAlmidon = DENSIDADES.TORTITAS;
+
+            const maxStarchG = 200; 
+            const maxStarchKcal = maxStarchG * densAlmidon;
+
+            let starchG = 0;
+            let oilMl = 0;
+
+            if (budgetKcal <= maxStarchKcal) {
+                starchG = budgetKcal / densAlmidon;
+            } else {
+                starchG = maxStarchG;
+                const sobrante = budgetKcal - maxStarchKcal;
+                oilMl = sobrante / DENSIDADES.ACEITE;
+            }
+
+            return {
+                starchG: Math.round(starchG),
+                oilMl: Math.round(oilMl),
+                oilCda: (oilMl / 15).toFixed(1),
+                kcalTotales: Math.round(budgetKcal)
+            };
+        }
+
+        function distribuirCena(baseBudget, extraBudget, tipoAlmidon) {
+            let densAlmidon = DENSIDADES.ARROZ;
+            if (tipoAlmidon.includes('patata')) densAlmidon = DENSIDADES.PATATA;
+            if (tipoAlmidon.includes('tortita')) densAlmidon = DENSIDADES.TORTITAS;
+
+            let starchKcal = baseBudget + (extraBudget * 0.60);
+            let oilKcal = extraBudget * 0.40;
+
+            if (starchKcal > (200 * densAlmidon)) {
+                let overflow = starchKcal - (200 * densAlmidon);
+                starchKcal -= overflow;
+                oilKcal += overflow;
+            }
+            if (oilKcal > (30 * DENSIDADES.ACEITE)) {
+                let overflow = oilKcal - (30 * DENSIDADES.ACEITE);
+                oilKcal -= overflow;
+                starchKcal += overflow;
+            }
+            
+            if (starchKcal > (200 * densAlmidon)) starchKcal = 200 * densAlmidon;
+            if (oilKcal > (30 * DENSIDADES.ACEITE)) oilKcal = 30 * DENSIDADES.ACEITE;
+
+            let starchG = starchKcal / densAlmidon;
+            let oilMl = oilKcal / DENSIDADES.ACEITE;
+
+            return {
+                starchG: Math.round(starchG),
+                oilMl: Math.round(oilMl),
+                oilCda: (oilMl / 15).toFixed(1),
+                kcalTotales: Math.round(starchKcal + oilKcal)
+            };
+        }
+
+        function getTotalEjercicio(info, dataHoy) {
+            let totalEj = 0;
+            if (dataHoy.ejercicio && info.rutinaDeporte && !info.esFinde) {
+                totalEj += info.rutinaDeporte.startsWith('B') ? 140 : 150;
+            }
+            if (dataHoy.ejerciciosManuales && dataHoy.ejerciciosManuales.length > 0) {
+                totalEj += dataHoy.ejerciciosManuales.reduce((sum, ej) => sum + ej.kcal, 0);
+            }
+            if (dataHoy.ejercicioKcal) {
+                totalEj += dataHoy.ejercicioKcal;
+            }
+            return totalEj;
+        }
+
+        function calcularIngestaDinamica(info, totalKcalEjercicio, extras, dateStr) {
+            const isHoyOFuturo = dateStr >= new Date().toISOString().split('T')[0];
+            const logDia = db[dateStr] || {};
+            
+            let mantenimiento = logDia.mantenimientoSnapshot;
+            let intensidad = logDia.intensidadSnapshot;
+            let tmb = logDia.tmbSnapshot;
+            
+            if (isHoyOFuturo || !mantenimiento) {
+                mantenimiento = calcularMantenimientoActual();
+                intensidad = parseInt(db.profile.intensidadObjetivo) || 500;
+                tmb = calcularTMB();
+            }
+
+            let valvulaSiboActiva = false;
+            let targetSedentario = mantenimiento - intensidad;
+            
+            if (targetSedentario < tmb) {
+                targetSedentario = tmb;
+                valvulaSiboActiva = true;
+            }
+
+            let targetTotal = (mantenimiento + totalKcalEjercicio) - intensidad;
+            if (targetTotal < tmb) {
+                targetTotal = tmb;
+                valvulaSiboActiva = true;
+            }
+
+            const meriendaKcal = extras.meriendaKcal || 150;
+            let budgetVarSedentario = targetSedentario - (DENSIDADES.FIJO + meriendaKcal + DENSIDADES.PROT_VEG * 2);
+            if (budgetVarSedentario < 0) budgetVarSedentario = 0;
+
+            const comidaBudget = budgetVarSedentario / 2;
+            const cenaBaseBudget = budgetVarSedentario / 2;
+            const cenaExtraBudget = targetTotal - targetSedentario; 
+
+            return {
+                comida: distribuirComida(comidaBudget, extras.almidonComida),
+                cena: distribuirCena(cenaBaseBudget, cenaExtraBudget, extras.almidonCena),
+                valvulaSiboActiva: valvulaSiboActiva
+            };
+        }
+
+        function renderEjerciciosManuales() {
+            const dataHoy = db[getInfoDia().fechaString];
+            const container = document.getElementById('lista-ejercicios-manuales');
+            container.innerHTML = '';
+            
+            if (dataHoy.ejerciciosManuales && dataHoy.ejerciciosManuales.length > 0) {
+                dataHoy.ejerciciosManuales.forEach((ej, index) => {
+                    container.innerHTML += `
+                        <div class="manual-exercise-item">
+                            <div class="details">
+                                <strong>${ej.deporte}</strong>
+                                ${ej.mins} min | Intensidad: ${ej.intensidadLabel} | +${Math.round(ej.kcal)} kcal
+                            </div>
+                            <button class="small-btn danger" onclick="borrarEjercicioManual(${index})"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `;
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function manejarAlertaMotilidadUI() {
+            const val = parseInt(document.getElementById('select-exceso').value);
+            const alerta = document.getElementById('alerta-motilidad');
+            if (val >= 850) {
+                alerta.style.display = 'block';
+            } else {
+                alerta.style.display = 'none';
+            }
+        }
+
+        function actualizarUI() {
+            const info = getInfoDia();
+            const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+            document.getElementById('date-text').innerText = info.fechaObj.toLocaleDateString('es-ES', dateOptions);
+
+            initDayDB(info.fechaString);
+            const dataHoy = db[info.fechaString];
+
+            // 1. Pestaña de Nutrición
+            document.getElementById('input-peso').value = dataHoy.peso || '';
+
+            if (info.esFinde) {
+                document.getElementById('titulo-plan-comida').innerHTML = `<i data-lucide="list"></i> Alimentación (Fin de Semana)`;
+                document.getElementById('dieta-list').innerHTML = "<p style='color: var(--text-muted); margin-bottom: 15px;'>Indica una estimación global de tu ingesta calórica.</p>";
+                document.getElementById('fin-de-semana-dieta').style.display = "block";
+                document.getElementById('select-finde').value = dataHoy.extraKcal || "1600";
+                document.getElementById('sibo-valve-warning').style.display = "none";
+            } else {
+                document.getElementById('titulo-plan-comida').innerHTML = `<i data-lucide="list"></i> Plan ${info.planActivo} (${info.diaLetra})`;
+                document.getElementById('fin-de-semana-dieta').style.display = "none";
+                const meals = dietaVariable[info.planActivo][info.diaLetra];
+                
+                const totalKcalEjercicio = getTotalEjercicio(info, dataHoy);
+
+                const macros = calcularIngestaDinamica(info, totalKcalEjercicio, {
+                    meriendaKcal: meals.merienda.kcal,
+                    almidonComida: meals.almidonComida,
+                    almidonCena: meals.almidonCena
+                }, info.fechaString);
+
+                document.getElementById('sibo-valve-warning').style.display = macros.valvulaSiboActiva ? "block" : "none";
+
+                let cAlmStr = macros.comida.starchG > 0 ? ` + ${macros.comida.starchG}g ${meals.almidonComida}` : "";
+                let cOilStr = macros.comida.oilMl > 0 ? ` + ${macros.comida.oilCda} cda AOVE` : "";
+                let descComida = `${meals.comidaBase}${cAlmStr}${cOilStr}`;
+                let kcalComida = DENSIDADES.PROT_VEG + macros.comida.kcalTotales;
+
+                let ceAlmStr = macros.cena.starchG > 0 ? ` + ${macros.cena.starchG}g ${meals.almidonCena}` : "";
+                let ceOilStr = macros.cena.oilMl > 0 ? ` + ${macros.cena.oilCda} cda AOVE` : "";
+                let descCena = `${meals.cenaBase}${ceAlmStr}${ceOilStr}`;
+                let kcalCena = DENSIDADES.PROT_VEG + macros.cena.kcalTotales;
+
+                document.getElementById('dieta-list').innerHTML = 
+                    buildMealHTML('desayuno', 'Desayuno', dietaFija.desayuno.desc, dataHoy.comidas.desayuno, dietaFija.desayuno.kcal) +
+                    buildMealHTML('almuerzo', 'Almuerzo', dietaFija.almuerzo.desc, dataHoy.comidas.almuerzo, dietaFija.almuerzo.kcal) +
+                    buildMealHTML('comida', 'Comida', descComida, dataHoy.comidas.comida, kcalComida) +
+                    buildMealHTML('merienda', 'Merienda', meals.merienda.desc, dataHoy.comidas.merienda, meals.merienda.kcal) +
+                    buildMealHTML('cena', 'Cena', descCena, dataHoy.comidas.cena, kcalCena);
+            }
+
+            // Excesos y Alcohol
+            document.getElementById('select-exceso').value = dataHoy.excesoKcal || "0";
+            manejarAlertaMotilidadUI();
+            
+            document.getElementById('select-alcohol').value = dataHoy.alcoholType || "0";
+            document.getElementById('input-ml').value = dataHoy.alcoholMl || '';
+            toggleAlcoholInput();
+
+            // 2. Pestaña de Entrenamiento
+            if (info.esFinde) {
+                document.getElementById('card-entrenamiento-app').style.display = "none";
+            } else {
+                document.getElementById('card-entrenamiento-app').style.display = "block";
+                document.getElementById('check-ejercicio').checked = dataHoy.ejercicio;
+                document.getElementById('lbl-check-ej').className = dataHoy.ejercicio ? 'checked-style' : '';
+
+                document.getElementById('timer-container').style.display = "block";
+                document.getElementById('timer-status').innerText = "LISTO PARA EMPEZAR";
+                document.getElementById('timer-display').innerText = "00:00";
+                
+                const rutinaInfo = rutinasDeporte[info.rutinaDeporte];
+                document.getElementById('titulo-entrenamiento').innerHTML = `<i data-lucide="${rutinaInfo.icono}"></i> ${rutinaInfo.titulo}`;
+                
+                let listHTML = `<p style="color:var(--text-muted); margin-bottom:10px;">${rutinaInfo.desc}</p>
+                        <ul style="color:var(--text); margin-left:20px; font-size:14px; line-height:1.6;">`;
+                rutinaInfo.ejercicios.forEach((ej, idx) => { listHTML += `<li>${idx + 1}. ${ej}</li>`; });
+                listHTML += `</ul>`;
+                
+                if (rutinaInfo.estiramientos) {
+                    listHTML += `<p style="color:var(--secondary); margin-top:15px; margin-bottom:5px; font-weight:bold; font-size:13px;">ESTIRAMIENTOS POST-HIIT (12 MIN):</p>
+                    <ul style="color:var(--text-muted); margin-left:20px; font-size:13px; line-height:1.6;">`;
+                    rutinaInfo.estiramientos.forEach((est) => { listHTML += `<li>${est}</li>`; });
+                    listHTML += `</ul>`;
+                }
+                document.getElementById('detalle-entrenamiento').innerHTML = listHTML;
+            }
+            renderEjerciciosManuales();
+
+            // 3. Pestaña de Perfil
+            if (db.profile) {
+                document.getElementById('perfil-nacimiento').value = db.profile.fechaNacimiento;
+                document.getElementById('perfil-complexion').value = db.profile.grasaPercent;
+                document.getElementById('perfil-actividad').value = db.profile.factorActividad;
+                document.getElementById('perfil-intensidad-dieta').value = db.profile.intensidadObjetivo;
+                
+                const edad = calcularEdad();
+                const peso = getPesoActual();
+                const mantenimientoActual = calcularMantenimientoActual();
+                
+                document.getElementById('perfil-tmb-display').innerText = mantenimientoActual.toLocaleString('es-ES') + ' kcal';
+                document.getElementById('perfil-detalles').innerHTML = `
+                    <span><i data-lucide="calendar"></i> ${edad} años</span>
+                    <span><i data-lucide="weight"></i> ${peso} kg</span>
+                    <span><i data-lucide="percent"></i> ${db.profile.grasaPercent}% Grasa</span>
+                `;
+            }
+
+            lucide.createIcons();
+        }
+
+        // Acciones Guardado
+        function guardarPeso() {
+            const v = parseFloat(document.getElementById('input-peso').value);
+            if(v) { 
+                db[getInfoDia().fechaString].peso = v; 
+                sync(); actualizarUI(); showToast("Peso guardado. Dieta recalibrada."); 
+            }
+        }
+        
+        function guardarDieta(meal) {
+            const isChecked = document.getElementById(`chk-${meal}`).checked;
+            db[getInfoDia().fechaString].comidas[meal] = isChecked;
+            document.getElementById(`lbl-${meal}`).className = isChecked ? 'checked-style' : '';
+            sync();
+        }
+
+        function guardarExceso() {
+            const v = parseInt(document.getElementById('select-exceso').value);
+            db[getInfoDia().fechaString].excesoKcal = v;
+            sync();
+            actualizarUI();
+            showToast("Registro de excesos actualizado.");
+        }
+        
+        function guardarIngestaFinde() {
+            db[getInfoDia().fechaString].extraKcal = parseInt(document.getElementById('select-finde').value);
+            db[getInfoDia().fechaString].findeGuardado = true;
+            sync(); showToast("Ingesta fin de semana guardada.");
+        }
+        
+        function guardarEjercicio() {
+            const isChecked = document.getElementById('check-ejercicio').checked;
+            db[getInfoDia().fechaString].ejercicio = isChecked;
+            document.getElementById('lbl-check-ej').className = isChecked ? 'checked-style' : '';
+            sync(); actualizarUI(); 
+            if(isChecked) showToast("¡Entrenamiento registrado! Cena ajustada.");
+        }
+
+        function guardarEjercicioManual() {
+            const deporte = document.getElementById('select-deporte').value;
+            const met = DEPORTES_MET[deporte];
+            const mins = parseFloat(document.getElementById('input-duracion').value);
+            const selIntensidad = document.getElementById('select-intensidad');
+            const factorInt = parseFloat(selIntensidad.value);
+            const intensidadLabel = selIntensidad.options[selIntensidad.selectedIndex].text.split(" ")[0];
+
+            if(!mins || mins <= 0) { showToast("Introduce una duración válida"); return; }
+
+            const pesoUser = getPesoActual();
+            const kcalQuemadas = met * factorInt * pesoUser * (mins / 60);
+
+            const hoyStr = getInfoDia().fechaString;
+            db[hoyStr].ejerciciosManuales.push({
+                deporte: deporte,
+                met: met,
+                mins: mins,
+                intensidadLabel: intensidadLabel,
+                kcal: kcalQuemadas
+            });
+
+            document.getElementById('input-duracion').value = '';
+            sync(); actualizarUI();
+            showToast("Actividad registrada. Gasto inyectado a la cena.");
+        }
+
+        function borrarEjercicioManual(index) {
+            const hoyStr = getInfoDia().fechaString;
+            db[hoyStr].ejerciciosManuales.splice(index, 1);
+            sync(); actualizarUI();
+            showToast("Actividad eliminada.");
+        }
+        
+        function guardarAlcohol() {
+            let type = document.getElementById('select-alcohol').value;
+            let ml = parseFloat(document.getElementById('input-ml').value) || 0;
+            db[getInfoDia().fechaString].alcoholType = type;
+            db[getInfoDia().fechaString].alcoholMl = ml;
+            db[getInfoDia().fechaString].alcoholKcal = parseFloat(type) * ml;
+            sync(); showToast("Alcohol registrado.");
+        }
+
+        function sync() { 
+            const fechaStr = getInfoDia().fechaString;
+            const hoyStr = new Date().toISOString().split('T')[0];
+            
+            if (db[fechaStr]) {
+                if (fechaStr >= hoyStr || !db[fechaStr].mantenimientoSnapshot) {
+                    db[fechaStr].mantenimientoSnapshot = calcularMantenimientoActual();
+                    db[fechaStr].tmbSnapshot = calcularTMB();
+                    db[fechaStr].intensidadSnapshot = parseInt(db.profile.intensidadObjetivo) || 500;
+                }
+            }
+            localStorage.setItem('siboTracker', JSON.stringify(db)); 
+        }
+
+        // --- CÁLCULO ANALÍTICO DE MÉTRICAS (Con Sellado Termodinámico) ---
+        function getDayMetrics(dateStr) {
+            const data = db[dateStr];
+            if (!data) return { ingesta: 0, basal: 0, gastoEj: 0, alcoholKcal: 0, alcoholMl: 0, excesoKcal: 0, neto: 0 };
+            
+            const info = getInfoDia(dateStr);
+            let ingesta = 0;
+            let gastoEj = getTotalEjercicio(info, data);
+            let alcoholKcal = data.alcoholKcal || 0;
+            let alcoholMl = data.alcoholMl || 0;
+            let excesoKcal = data.excesoKcal || 0;
+            let isFoodLogged = false;
+
+            if (info.esFinde) {
+                if (data.findeGuardado) {
+                    ingesta = data.extraKcal || 0;
+                    isFoodLogged = true;
+                }
+            } else {
+                const meals = dietaVariable[info.planActivo][info.diaLetra];
+                const macros = calcularIngestaDinamica(info, gastoEj, {
+                    meriendaKcal: meals.merienda.kcal,
+                    almidonComida: meals.almidonComida,
+                    almidonCena: meals.almidonCena
+                }, dateStr);
+
+                let comidaKcal = DENSIDADES.PROT_VEG + macros.comida.kcalTotales;
+                let cenaKcal = DENSIDADES.PROT_VEG + macros.cena.kcalTotales;
+
+                if(data.comidas?.desayuno) { ingesta += dietaFija.desayuno.kcal; isFoodLogged = true; }
+                if(data.comidas?.almuerzo) { ingesta += dietaFija.almuerzo.kcal; isFoodLogged = true; }
+                if(data.comidas?.comida)   { ingesta += comidaKcal; isFoodLogged = true; }
+                if(data.comidas?.merienda) { ingesta += meals.merienda.kcal; isFoodLogged = true; }
+                if(data.comidas?.cena)     { ingesta += cenaKcal; isFoodLogged = true; }
+            }
+
+            let diaMantenimiento = 2146; 
+            const hoyStr = new Date().toISOString().split('T')[0];
+
+            if (dateStr < hoyStr) {
+                if (data.mantenimientoSnapshot) {
+                    diaMantenimiento = data.mantenimientoSnapshot;
+                } else if (data.gastoBasal) {
+                    diaMantenimiento = data.gastoBasal; 
+                }
+            } else {
+                diaMantenimiento = calcularMantenimientoActual();
+            }
+
+            const basal = isFoodLogged ? diaMantenimiento : 0;
+            
+            // Fórmula Termodinámica estricta: Ingesta pura aisla base, alcohol y exceso van por separado
+            const neto = (ingesta + alcoholKcal + excesoKcal) - (basal + gastoEj); 
+            
+            return { ingesta, basal, gastoEj, alcoholKcal, alcoholMl, excesoKcal, neto };
+        }
+
+        function renderMetricas() {
+            const info = getInfoDia();
+            const currDateStr = info.fechaString;
+            const targetDateObj = info.fechaObj;
+            
+            // 1. DÍA
+            const diaMet = getDayMetrics(currDateStr);
+            
+            // 2. SEMANA
+            let sem = { ingesta: 0, basal: 0, gastoEj: 0, alcoholKcal: 0, alcoholMl: 0, excesoKcal: 0, neto: 0 };
+            const dayOfWeek = targetDateObj.getDay(); 
+            const distToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const monday = new Date(targetDateObj);
+            monday.setDate(monday.getDate() - distToMonday);
+            
+            for(let i=0; i<7; i++) {
+                let d = new Date(monday);
+                d.setDate(d.getDate() + i);
+                let dStr = d.toISOString().split('T')[0];
+                if(db[dStr]) {
+                    let m = getDayMetrics(dStr);
+                    sem.ingesta += m.ingesta; sem.basal += m.basal; sem.gastoEj += m.gastoEj;
+                    sem.alcoholKcal += m.alcoholKcal; sem.alcoholMl += m.alcoholMl; sem.excesoKcal += m.excesoKcal; sem.neto += m.neto;
+                }
+            }
+
+            // 3. MES
+            let mes = { ingesta: 0, basal: 0, gastoEj: 0, alcoholKcal: 0, alcoholMl: 0, excesoKcal: 0, neto: 0 };
+            const currMonth = targetDateObj.toISOString().slice(0, 7);
+            for (const [dateKey, value] of Object.entries(db)) {
+                if (dateKey.startsWith(currMonth)) {
+                    let m = getDayMetrics(dateKey);
+                    mes.ingesta += m.ingesta; mes.basal += m.basal; mes.gastoEj += m.gastoEj;
+                    mes.alcoholKcal += m.alcoholKcal; mes.alcoholMl += m.alcoholMl; mes.excesoKcal += m.excesoKcal; mes.neto += m.neto;
+                }
+            }
+
+            function renderMetricBlock(valId, detId, metObj) {
+                const elVal = document.getElementById(valId);
+                const val = Math.round(metObj.neto);
+                
+                elVal.innerText = (val > 0 ? '+' : '') + val.toLocaleString('es-ES') + ' kcal';
+                elVal.className = 'metric-main ' + (val > 0 ? 'val-superavit' : 'val-deficit');
+                
+                let detailsHTML = `
+                    <span><i data-lucide="apple"></i> Ingesta: ${Math.round(metObj.ingesta).toLocaleString('es-ES')}</span>
+                    <span><i data-lucide="flame"></i> Basal+NEAT: ${Math.round(metObj.basal).toLocaleString('es-ES')}</span>
+                    <span><i data-lucide="activity"></i> Deporte: ${Math.round(metObj.gastoEj).toLocaleString('es-ES')}</span>
+                    <span><i data-lucide="alert-triangle"></i> Excesos: ${Math.round(metObj.excesoKcal).toLocaleString('es-ES')}</span>
+                    <span><i data-lucide="beer"></i> Alcohol: ${Math.round(metObj.alcoholKcal).toLocaleString('es-ES')}</span>
+                `;
+                document.getElementById(detId).innerHTML = detailsHTML;
+            }
+
+            renderMetricBlock('val-neto-dia', 'det-dia', diaMet);
+            renderMetricBlock('val-neto-semana', 'det-semana', sem);
+            renderMetricBlock('val-neto-mes', 'det-mes', mes);
+            
+            const intensidadDiaria = parseInt(db.profile.intensidadObjetivo) || 500;
+            const deficitSemanalTeorico = intensidadDiaria * 7;
+            const kgTeorico = (deficitSemanalTeorico * -1) / 7700;
+            
+            const elProyeccion = document.getElementById('proyeccion-teorica');
+            elProyeccion.innerHTML = `<i data-lucide="gauge"></i> -${Math.abs(kgTeorico).toFixed(2)} kg`;
+            elProyeccion.style.color = 'var(--secondary)';
+
+            // --- CÁLCULO DE PÉRDIDA REAL 7 DÍAS ---
+            let pesos7dias = [];
+            for(let i=0; i<7; i++) {
+                let d = new Date(targetDateObj);
+                d.setDate(d.getDate() - i);
+                let dStr = d.toISOString().split('T')[0];
+                if(db[dStr] && db[dStr].peso) {
+                    pesos7dias.push({ date: dStr, peso: parseFloat(db[dStr].peso) });
+                }
+            }
+            pesos7dias.sort((a, b) => a.date.localeCompare(b.date));
+            
+            const elReal = document.getElementById('perdida-real');
+            if (pesos7dias.length >= 2) {
+                let pesoViejo = pesos7dias[0].peso;
+                let pesoNuevo = pesos7dias[pesos7dias.length - 1].peso;
+                let kgReal = pesoNuevo - pesoViejo;
+                
+                if (kgReal < 0) {
+                    elReal.innerHTML = `<i data-lucide="trending-down"></i> -${Math.abs(kgReal).toFixed(2)} kg`;
+                    elReal.style.color = 'var(--secondary)';
+                } else if (kgReal > 0) {
+                    elReal.innerHTML = `<i data-lucide="trending-up"></i> +${Math.abs(kgReal).toFixed(2)} kg`;
+                    elReal.style.color = 'var(--error)';
+                } else {
+                    elReal.innerHTML = `0.00 kg`;
+                    elReal.style.color = '#fff';
+                }
+            } else {
+                elReal.innerHTML = `0.00 kg`;
+                elReal.style.color = '#fff';
+            }
+            
+            lucide.createIcons();
+
+            // 4. GRÁFICA MIXTA
+            const sortedKeys = Object.keys(db).filter(k => k !== 'profile').sort();
+            const labels = [];
+            const dataPeso = [];
+            const dataBalance = [];
+            const balanceBackgroundColors = [];
+            const balanceBorderColors = [];
+
+            sortedKeys.forEach(dateStr => {
+                labels.push(dateStr.slice(5)); 
+                dataPeso.push(db[dateStr].peso || null);
+                
+                const balance = Math.round(getDayMetrics(dateStr).neto);
+                dataBalance.push(balance);
+                
+                if (balance > 0) {
+                    balanceBackgroundColors.push('rgba(255, 0, 85, 0.6)');
+                    balanceBorderColors.push('#ff0055');
+                } else {
+                    balanceBackgroundColors.push('rgba(0, 229, 255, 0.6)');
+                    balanceBorderColors.push('#00e5ff');
+                }
+            });
+
+            const ctx = document.getElementById('metricsChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { type: 'bar', label: 'Balance Cal. (kcal)', data: dataBalance, backgroundColor: balanceBackgroundColors, borderColor: balanceBorderColors, borderWidth: 1, yAxisID: 'yBalance', borderRadius: 4 },
+                        { type: 'line', label: 'Peso (kg)', data: dataPeso, borderColor: '#ccff00', backgroundColor: '#ccff00', yAxisID: 'yPeso', tension: 0.3, borderWidth: 3, pointRadius: 4, spanGaps: true }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    color: '#c5c6c7',
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                        yPeso: { type: 'linear', display: true, position: 'left', min: 70, max: 95, ticks: { stepSize: 1 }, grid: { color: 'rgba(204,255,0,0.1)' }, title: { display: true, text: 'Peso (kg)', color: '#ccff00' } },
+                        yBalance: { type: 'linear', display: true, position: 'right', min: -1000, max: 1000, ticks: { stepSize: 200 }, grid: { drawOnChartArea: false }, title: { display: true, text: 'Balance (kcal)', color: '#00e5ff' } }
+                    },
+                    plugins: { legend: { labels: { color: '#fff' } } }
+                }
+            });
+        }
+
+        // --- WEB AUDIO API Y CRONÓMETRO ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playBeep(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'short') { osc.frequency.value = 880; gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.1); } 
+            else if (type === 'long') { osc.frequency.value = 440; gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.6); }
+        }
+
+        function pauseTimer() {
+            if (!isTimerRunning) return;
+            isTimerPaused = !isTimerPaused;
+            const btnPause = document.getElementById('btn-pause');
+            const tBox = document.getElementById('timer-container');
+
+            if (isTimerPaused) {
+                btnPause.innerHTML = `<i data-lucide="play-circle"></i> REANUDAR`; btnPause.style.backgroundColor = "var(--primary)"; btnPause.style.color = "var(--bg)"; document.getElementById('timer-status').innerText = "PAUSADO"; tBox.classList.add('active-paused');
+            } else {
+                btnPause.innerHTML = `<i data-lucide="pause"></i> PAUSAR`; btnPause.style.backgroundColor = "var(--secondary)"; btnPause.style.color = "var(--bg)"; tBox.classList.remove('active-paused');
+                if (phase === 'PRESTART') { document.getElementById('timer-status').innerText = "PREPARADOS..."; } else if (phase === 'WORK') { document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - ¡TRABAJO!`; } else if (phase === 'REST') { document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - DESCANSO`; }
+            }
+            lucide.createIcons();
+        }
+
+        function toggleTimer() {
+            initAudio(); 
+            const info = getInfoDia();
+            const isHIIT = info.rutinaDeporte ? info.rutinaDeporte.startsWith('B') : false;
+            const tBox = document.getElementById('timer-container');
+
+            if(isTimerRunning) {
+                clearInterval(timerInterval); isTimerRunning = false; isTimerPaused = false; releaseWakeLock(); 
+                const btnTimer = document.getElementById('btn-timer'); btnTimer.innerHTML = `<i data-lucide="play"></i> INICIAR`; btnTimer.className = "";
+                document.getElementById('btn-pause').style.display = "none"; document.getElementById('btn-pause').innerHTML = `<i data-lucide="pause"></i> PAUSAR`; document.getElementById('btn-pause').style.backgroundColor = "var(--secondary)"; document.getElementById('btn-pause').style.color = "var(--bg)";
+                document.getElementById('timer-display').innerText = "00:00"; document.getElementById('timer-status').innerText = "DETENIDO"; document.getElementById('exercise-name').innerText = "PREPARADO"; document.getElementById('timer-display').classList.remove('countdown-warning'); tBox.classList.remove('active-work', 'active-rest', 'active-paused'); lucide.createIcons(); return;
+            }
+            
+            isTimerRunning = true; isTimerPaused = false; requestWakeLock(); 
+            const btnTimer = document.getElementById('btn-timer'); btnTimer.innerHTML = `<i data-lucide="square"></i> DETENER`; btnTimer.className = "danger";
+            const btnPause = document.getElementById('btn-pause'); btnPause.style.display = "flex";
+            lucide.createIcons();
+            
+            const rutinaActiva = rutinasDeporte[info.rutinaDeporte];
+            totalRounds = isHIIT ? 16 : 20; let workTimeSet = isHIIT ? 20 : 45; let restTimeSet = isHIIT ? 10 : 15; let currentExercises = rutinaActiva.ejercicios;
+            currentRound = 0; let currentExIndex = 0; phase = 'PRESTART'; timeLeft = 5; 
+            
+            function renderTimer() {
+                let m = Math.floor(timeLeft / 60); let s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+                if (timeLeft <= 5 && timeLeft > 0) { document.getElementById('timer-display').classList.add('countdown-warning'); } else { document.getElementById('timer-display').classList.remove('countdown-warning'); }
+            }
+
+            document.getElementById('timer-status').innerText = "PREPARADOS..."; document.getElementById('exercise-name').innerText = currentExercises[currentExIndex]; tBox.classList.remove('active-work', 'active-rest'); renderTimer();
+            
+            timerInterval = setInterval(() => {
+                if (isTimerPaused) return;
+                if (timeLeft <= 5 && timeLeft > 0) playBeep('short'); else if (timeLeft === 0) playBeep('long');
+
+                if (timeLeft <= 0) {
+                    if (phase === 'PRESTART') { phase = 'WORK'; timeLeft = workTimeSet; document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - ¡TRABAJO!`; tBox.className = "timer-box active-work"; } 
+                    else if (phase === 'WORK') {
+                        phase = 'REST'; timeLeft = restTimeSet; currentRound++;
+                        if (currentRound >= totalRounds) { toggleTimer(); showToast("¡Rutina Completada!"); document.getElementById('check-ejercicio').checked = true; guardarEjercicio(); return; } 
+                        else { currentExIndex = (currentExIndex + 1) % currentExercises.length; document.getElementById('exercise-name').innerText = "SIG: " + currentExercises[currentExIndex]; document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - DESCANSO`; tBox.className = "timer-box active-rest"; }
+                    } else if (phase === 'REST') { phase = 'WORK'; timeLeft = workTimeSet; document.getElementById('exercise-name').currentExercises[currentExIndex]; document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - ¡TRABAJO!`; tBox.className = "timer-box active-work"; }
+                } else { timeLeft--; }
+                renderTimer();
+            }, 1000);
+        }
+
+        // Export/Import
+        function exportarDatos() {
+            const dataStr = JSON.stringify(db); const textArea = document.createElement("textarea"); textArea.value = dataStr; textArea.style.position = "fixed"; textArea.style.left = "-9999px"; document.body.appendChild(textArea); textArea.select();
+            try { document.execCommand('copy'); localStorage.setItem('siboTracker_lastExport', Date.now().toString()); showToast("Datos copiados al portapapeles."); } catch (err) { showToast("Error al copiar. Selecciona el texto manualmente."); }
+            document.body.removeChild(textArea); document.getElementById('backup-modal').style.display = 'none';
+        }
+        function toggleImportArea() { const area = document.getElementById('import-area'); area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
+        function procesarImportacionTexto() {
+            const text = document.getElementById('import-text').value;
+            if (!text.trim()) { showToast("El cuadro de texto está vacío."); return; }
+            try { db = JSON.parse(text); sync(); actualizarUI(); document.getElementById('import-text').value = ''; toggleImportArea(); showToast("Datos importados y restaurados."); } catch(err) { showToast("Error: El texto introducido no es un JSON válido."); }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
