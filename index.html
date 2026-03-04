@@ -559,7 +559,7 @@
         const FECHA_INICIO = new Date('2026-03-02T00:00:00'); 
 
         // Diccionario de Densidades Calóricas
-        const DENSIDADES = { ARROZ: 1.3, PATATA: 0.8, TORTITAS: 3.8, ACEITE: 9, FIJO: 595, PROT_VEG: 400 };
+        const DENSIDADES = { ARROZ: 1.3, PATATA: 0.8, TORTITAS: 3.8, ACEITE: 9, FIJO: 595 };
 
         // Base de Datos de METs (Equivalentes Metabólicos)
         const DEPORTES_MET = { "Pádel": 7.0, "Fútbol": 8.0, "Running": 9.0, "Caminar": 4.0, "Ciclismo": 7.5 };
@@ -571,25 +571,25 @@
 
         const dietaVariable = {
             A: {
-                L: { comidaBase: "Pollo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Espinaca 150g + 120g Atún", almidonCena: "tortitas de arroz" },
-                M: { comidaBase: "Ternera 180g + Calabacín 250g", almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "120g Atún + 120g Tomate natural", almidonCena: "patata" },
-                X: { comidaBase: "Merluza 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "120g Atún + 120g Tomate natural", almidonCena: "tortitas de arroz" },
-                J: { comidaBase: "Lomo 180g + Pimientos 200g", almidonComida: "arroz", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate natural", almidonCena: "patata" },
-                V: { comidaBase: "Gambas 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "150g Salmón + Judía 200g", almidonCena: "tortitas de arroz" }
+                L: { comidaBase: "Pollo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Espinaca 150g + 120g Atún", ceKcal: 305, almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "Ternera 180g + Calabacín 250g", cKcal: 295, almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "120g Atún + 120g Tomate natural", ceKcal: 142, almidonCena: "patata" },
+                X: { comidaBase: "Merluza 200g", cKcal: 160, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "120g Atún + 120g Tomate natural", ceKcal: 142, almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "Lomo 180g + Pimientos 200g", cKcal: 300, almidonComida: "arroz", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate natural", ceKcal: 142, almidonCena: "patata" },
+                V: { comidaBase: "Gambas 200g", cKcal: 180, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "150g Salmón + Judía 200g", ceKcal: 362, almidonCena: "tortitas de arroz" }
             },
             B: {
-                L: { comidaBase: "Salmón 150g + Espárragos 200g", almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "2 Huevos + 80g Atún", almidonCena: "tortitas de arroz" },
-                M: { comidaBase: "Pollo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Nueces", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", almidonCena: "tortitas de arroz" },
-                X: { comidaBase: "Ternera 180g + Pimientos", almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "180g Lomo + Judía 200g", almidonCena: "tortitas de arroz" },
-                J: { comidaBase: "Gambas 200g", almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "150g Salmón + Calabacín", almidonCena: "tortitas de arroz" },
-                V: { comidaBase: "Pollo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Almendras", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", almidonCena: "tortitas de arroz" }
+                L: { comidaBase: "Salmón 150g + Espárragos 200g", cKcal: 340, almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "2 Huevos + 80g Atún", ceKcal: 230, almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "Pollo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Nueces", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", ceKcal: 182, almidonCena: "tortitas de arroz" },
+                X: { comidaBase: "Ternera 180g + Pimientos", cKcal: 302, almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "180g Lomo + Judía 200g", ceKcal: 312, almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "Gambas 200g", cKcal: 180, almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "150g Salmón + Calabacín", ceKcal: 334, almidonCena: "tortitas de arroz" },
+                V: { comidaBase: "Pollo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Almendras", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", ceKcal: 182, almidonCena: "tortitas de arroz" }
             },
             C: {
-                L: { comidaBase: "Pavo 180g + Judía 200g", almidonComida: "arroz", merienda: { desc: "15g Nueces", kcal: 100 }, cenaBase: "200g Gambas + Espinaca", almidonCena: "tortitas de arroz" },
-                M: { comidaBase: "Ternera 180g + Espárragos", almidonComida: "patata", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Pimientos", almidonCena: "tortitas de arroz" },
-                X: { comidaBase: "Salmón 150g + Alcachofa", almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "180g Pollo + Calabacín", almidonCena: "tortitas de arroz" },
-                J: { comidaBase: "Lomo 180g + Pimientos", almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate", almidonCena: "tortitas de arroz" },
-                V: { comidaBase: "Merluza 200g", almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "180g Ternera + Espinaca", almidonCena: "tortitas de arroz" }
+                L: { comidaBase: "Pavo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "15g Nueces", kcal: 100 }, cenaBase: "200g Gambas + Espinaca", ceKcal: 215, almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "Ternera 180g + Espárragos", cKcal: 292, almidonComida: "patata", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Pimientos", ceKcal: 200, almidonCena: "tortitas de arroz" },
+                X: { comidaBase: "Salmón 150g + Alcachofa", cKcal: 390, almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "180g Pollo + Calabacín", ceKcal: 232, almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "Lomo 180g + Pimientos", cKcal: 300, almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate", ceKcal: 142, almidonCena: "tortitas de arroz" },
+                V: { comidaBase: "Merluza 200g", cKcal: 160, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "180g Ternera + Espinaca", ceKcal: 287, almidonCena: "tortitas de arroz" }
             }
         };
 
@@ -1046,7 +1046,7 @@
             }
 
             const meriendaKcal = extras.meriendaKcal || 150;
-            let budgetVarSedentario = targetSedentario - (DENSIDADES.FIJO + meriendaKcal + DENSIDADES.PROT_VEG * 2);
+            let budgetVarSedentario = targetSedentario - (DENSIDADES.FIJO + meriendaKcal + extras.cKcal + extras.ceKcal);
             if (budgetVarSedentario < 0) budgetVarSedentario = 0;
 
             const comidaBudget = budgetVarSedentario / 2;
@@ -1118,7 +1118,9 @@
                 const macros = calcularIngestaDinamica(info, totalKcalEjercicio, {
                     meriendaKcal: meals.merienda.kcal,
                     almidonComida: meals.almidonComida,
-                    almidonCena: meals.almidonCena
+                    almidonCena: meals.almidonCena,
+                    cKcal: meals.cKcal,
+                    ceKcal: meals.ceKcal
                 }, info.fechaString);
 
                 document.getElementById('sibo-valve-warning').style.display = macros.valvulaSiboActiva ? "block" : "none";
@@ -1126,12 +1128,12 @@
                 let cAlmStr = macros.comida.starchG > 0 ? ` + ${macros.comida.starchG}g ${meals.almidonComida}` : "";
                 let cOilStr = macros.comida.oilMl > 0 ? ` + ${macros.comida.oilCda} cda AOVE` : "";
                 let descComida = `${meals.comidaBase}${cAlmStr}${cOilStr}`;
-                let kcalComida = DENSIDADES.PROT_VEG + macros.comida.kcalTotales;
+                let kcalComida = meals.cKcal + macros.comida.kcalTotales;
 
                 let ceAlmStr = macros.cena.starchG > 0 ? ` + ${macros.cena.starchG}g ${meals.almidonCena}` : "";
                 let ceOilStr = macros.cena.oilMl > 0 ? ` + ${macros.cena.oilCda} cda AOVE` : "";
                 let descCena = `${meals.cenaBase}${ceAlmStr}${ceOilStr}`;
-                let kcalCena = DENSIDADES.PROT_VEG + macros.cena.kcalTotales;
+                let kcalCena = meals.ceKcal + macros.cena.kcalTotales;
 
                 document.getElementById('dieta-list').innerHTML = 
                     buildMealHTML('desayuno', 'Desayuno', dietaFija.desayuno.desc, dataHoy.comidas.desayuno, dietaFija.desayuno.kcal) +
@@ -1319,11 +1321,13 @@
                 const macros = calcularIngestaDinamica(info, gastoEj, {
                     meriendaKcal: meals.merienda.kcal,
                     almidonComida: meals.almidonComida,
-                    almidonCena: meals.almidonCena
+                    almidonCena: meals.almidonCena,
+                    cKcal: meals.cKcal,
+                    ceKcal: meals.ceKcal
                 }, dateStr);
 
-                let comidaKcal = DENSIDADES.PROT_VEG + macros.comida.kcalTotales;
-                let cenaKcal = DENSIDADES.PROT_VEG + macros.cena.kcalTotales;
+                let comidaKcal = meals.cKcal + macros.comida.kcalTotales;
+                let cenaKcal = meals.ceKcal + macros.cena.kcalTotales;
 
                 if(data.comidas?.desayuno) { ingesta += dietaFija.desayuno.kcal; isFoodLogged = true; }
                 if(data.comidas?.almuerzo) { ingesta += dietaFija.almuerzo.kcal; isFoodLogged = true; }
