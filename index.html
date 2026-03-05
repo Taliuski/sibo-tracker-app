@@ -93,7 +93,8 @@
         #exercise-name { text-align: center; font-size: 24px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; color: #fff;}
         #timer-status { text-align: center; color: var(--text-muted); font-size: 16px; letter-spacing: 2px; font-weight: bold;}
         .countdown-warning { color: var(--error) !important; text-shadow: 0 0 15px rgba(255,0,85,0.5) !important;}
-        .timer-controls { display: flex; gap: 10px; margin-top: 15px; }
+        .timer-controls { display: flex; gap: 10px; margin-top: 15px; width: 100%; }
+        .timer-controls button { flex: 1; padding: 14px 10px; font-size: 14px; white-space: nowrap; margin-top: 0; }
 
         /* Listas Ejercicios Manuales */
         .manual-exercise-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 3px solid var(--secondary); }
@@ -137,12 +138,20 @@
         .accordion-header { background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; padding: 15px; width: 100%; text-align: left; border: none; outline: none; transition: 0.3s; font-size: 14px; font-weight: bold; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-top: 0;}
         .accordion-header:hover, .accordion-header.active { background: rgba(0,229,255,0.1); color: var(--secondary); }
         .accordion-header svg { transition: transform 0.3s ease; }
-        .accordion-header.active svg { transform: rotate(180deg); } /* Animación CSS en lugar de JS */
+        .accordion-header.active svg { transform: rotate(180deg); }
         .accordion-content { padding: 0 15px; background-color: transparent; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; font-size: 13px; color: #bbb; line-height: 1.6; }
         .accordion-content p { margin: 15px 0; color: #bbb;}
         
         .infographic-box { background: rgba(204,255,0,0.05); border-left: 3px solid var(--primary); padding: 12px; margin: 15px 0; border-radius: 4px; }
         .infographic-box strong { color: var(--primary); display: block; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; }
+
+        /* Lista de Backups UI */
+        .backup-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text); transition: background 0.2s; text-align: left;}
+        .backup-item:last-child { border-bottom: none; }
+        .backup-item:hover { background: rgba(255,255,255,0.05); }
+        .backup-item.selected { background: rgba(0, 229, 255, 0.15); border-left: 3px solid var(--secondary); }
+        .backup-item-name { font-weight: bold; color: #fff; margin-bottom: 4px;}
+        .backup-item-size { color: var(--text-muted); font-size: 11px; }
     </style>
 </head>
 <body>
@@ -197,10 +206,10 @@
     <div id="backup-modal" class="modal-overlay">
         <div class="modal-box">
             <h3><i data-lucide="shield-alert"></i> Copia de Seguridad</h3>
-            <p>Han pasado más de 30 días desde tu última exportación. Recomendamos guardar tus datos ahora para evitar cualquier pérdida.</p>
+            <p>Han pasado más de 30 días desde tu última exportación. Recomendamos descargar tus datos ahora para evitar cualquier pérdida.</p>
             <div class="modal-buttons">
                 <button class="secondary" onclick="postponeBackup()">Más tarde</button>
-                <button onclick="performAutoBackup()"><i data-lucide="download"></i> Guardar</button>
+                <button onclick="exportarDatos()"><i data-lucide="download"></i> Descargar</button>
             </div>
         </div>
     </div>
@@ -291,6 +300,7 @@
         <div class="header-center">TRACKER</div>
         
         <div class="header-right">
+            <button id="btn-hoy" onclick="volverAHoy()" style="display:none; background: var(--secondary); color: var(--bg); border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-right: 5px;">HOY</button>
             <span id="date-text" style="font-weight: bold; font-size: 14px; color: var(--text);">Cargando...</span>
             <label style="position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; cursor: pointer; color: var(--secondary); background: rgba(0,229,255,0.1); border-radius: 5px;">
                 <i data-lucide="calendar"></i>
@@ -541,15 +551,28 @@
     <div id="tab-exportacion" class="container tab-content">
         <div class="card">
             <h2><i data-lucide="database"></i> Gestión de Datos</h2>
-            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Copia tus registros al portapapeles para guardarlos en un bloc de notas y pégalos aquí cuando necesites recuperarlos.</p>
-            <button onclick="exportarDatos()"><i data-lucide="copy"></i> Copiar Datos (Exportar)</button>
-            <button class="secondary" onclick="toggleImportArea()"><i data-lucide="clipboard-paste"></i> Pegar Datos (Importar)</button>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Descarga tus registros al dispositivo en formato seguro o restáuralos desde una copia previa.</p>
+            <button onclick="exportarDatos()"><i data-lucide="download"></i> Exportar Datos (.json)</button>
+            <button class="secondary" onclick="toggleImportArea()"><i data-lucide="upload"></i> Importar Datos</button>
             
-            <div id="import-area" style="display:none; margin-top: 15px; animation: fadeIn 0.3s;">
-                <textarea id="import-text" rows="5" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #0b0c10; color: #fff; font-family: monospace; font-size: 12px; resize: vertical;" placeholder="Pega aquí el código JSON previamente copiado..."></textarea>
-                <button class="danger" onclick="procesarImportacionTexto()"><i data-lucide="check-circle"></i> Confirmar Sobrescritura</button>
+            <div id="import-area" style="display:none; margin-top: 20px; animation: fadeIn 0.3s;">
+                <h3 style="font-size: 13px; color: var(--secondary); margin-bottom: 10px; text-transform: uppercase;">Copias Locales Disponibles</h3>
+                <div id="backup-list-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #333; border-radius: 8px; background: rgba(0,0,0,0.5); margin-bottom: 15px;">
+                    <!-- JS injected list -->
+                </div>
+                
+                <button id="btn-confirmar-importacion" class="danger" disabled onclick="procesarImportacionSeleccionada()"><i data-lucide="check-circle"></i> Restaurar Copia Seleccionada</button>
+                
+                <div style="margin-top: 25px; border-top: 1px dashed #444; padding-top: 15px;">
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; text-align: center;">¿Cambiaste de dispositivo? Carga el archivo físico.</p>
+                    <label style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #333; color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+                        <i data-lucide="folder-open"></i> Explorar Archivo .json
+                        <input type="file" id="file-upload-input" accept=".json" style="display: none;" onchange="importarDesdeArchivoFisico(event)">
+                    </label>
+                </div>
             </div>
-            <p style="font-size: 12px; color: var(--error); margin-top: 20px;">Cuidado: Importar un código sobrescribirá los datos actuales del navegador.</p>
+            
+            <p style="font-size: 12px; color: var(--error); margin-top: 20px; text-align: center;">Atención: Importar un archivo sobrescribirá los datos actuales.</p>
         </div>
     </div>
 
@@ -623,6 +646,8 @@
         let wakeLock = null; 
         
         let currentActiveDay = "";
+        let isManualDate = false;
+        let selectedBackupData = null; // Variable para gestionar la importación
 
         // Inicialización de Lógica de Acordeón
         function initAccordion() {
@@ -659,6 +684,7 @@
 
         // Sincronización continua de la fecha actual
         function checkAndSyncDate() {
+            if (isManualDate) return;
             const hoyStr = getLocalISODate();
             if (currentActiveDay !== hoyStr) {
                 currentActiveDay = hoyStr;
@@ -670,7 +696,15 @@
         function cambiarFechaManual() {
             if (isTimerRunning) toggleTimer(); 
             currentActiveDay = document.getElementById('date-picker').value;
+            isManualDate = (currentActiveDay !== getLocalISODate());
+            document.getElementById('btn-hoy').style.display = isManualDate ? 'block' : 'none';
             actualizarUI();
+        }
+
+        function volverAHoy() {
+            isManualDate = false;
+            document.getElementById('btn-hoy').style.display = 'none';
+            checkAndSyncDate();
         }
 
         async function requestWakeLock() {
@@ -1575,7 +1609,7 @@
                 btnPause.innerHTML = `<i data-lucide="play-circle"></i> REANUDAR`; btnPause.style.backgroundColor = "var(--primary)"; btnPause.style.color = "var(--bg)"; document.getElementById('timer-status').innerText = "PAUSADO"; tBox.classList.add('active-paused');
             } else {
                 btnPause.innerHTML = `<i data-lucide="pause"></i> PAUSAR`; btnPause.style.backgroundColor = "var(--secondary)"; btnPause.style.color = "var(--bg)"; tBox.classList.remove('active-paused');
-                if (phase === 'PRESTART') { document.getElementById('timer-status').innerText = "PREPARADOS..."; } else if (phase === 'WORK') { document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - ¡TRABAJO!`; } else if (phase === 'REST') { document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - DESCANSO`; }
+                if (phase === 'PRESTART') { document.getElementById('timer-status').innerText = "PREPARADOS..."; } else if (phase === 'WORK') { document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - TRABAJO`; } else if (phase === 'REST') { document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - DESCANSO`; }
             }
             lucide.createIcons();
         }
@@ -1600,7 +1634,7 @@
             
             const rutinaActiva = rutinasDeporte[info.rutinaDeporte];
             totalRounds = isHIIT ? 16 : 20; let workTimeSet = isHIIT ? 20 : 45; let restTimeSet = isHIIT ? 10 : 15; let currentExercises = rutinaActiva.ejercicios;
-            currentRound = 0; let currentExIndex = 0; phase = 'PRESTART'; timeLeft = 5; 
+            currentRound = 1; let currentExIndex = 0; phase = 'PRESTART'; timeLeft = 5; 
             
             function renderTimer() {
                 let m = Math.floor(timeLeft / 60); let s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
@@ -1614,28 +1648,156 @@
                 if (timeLeft <= 5 && timeLeft > 0) playBeep('short'); else if (timeLeft === 0) playBeep('long');
 
                 if (timeLeft <= 0) {
-                    if (phase === 'PRESTART') { phase = 'WORK'; timeLeft = workTimeSet; document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - ¡TRABAJO!`; tBox.className = "timer-box active-work"; } 
+                    if (phase === 'PRESTART') { 
+                        phase = 'WORK'; timeLeft = workTimeSet; document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - TRABAJO`; tBox.className = "timer-box active-work"; 
+                    } 
                     else if (phase === 'WORK') {
-                        phase = 'REST'; timeLeft = restTimeSet; currentRound++;
-                        if (currentRound >= totalRounds) { toggleTimer(); showToast("¡Rutina Completada!"); document.getElementById('check-ejercicio').checked = true; guardarEjercicio(); return; } 
-                        else { currentExIndex = (currentExIndex + 1) % currentExercises.length; document.getElementById('exercise-name').innerText = "SIG: " + currentExercises[currentExIndex]; document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - DESCANSO`; tBox.className = "timer-box active-rest"; }
-                    } else if (phase === 'REST') { phase = 'WORK'; timeLeft = workTimeSet; document.getElementById('exercise-name').currentExercises[currentExIndex]; document.getElementById('timer-status').innerText = `RONDA ${currentRound + 1}/${totalRounds} - ¡TRABAJO!`; tBox.className = "timer-box active-work"; }
+                        phase = 'REST'; timeLeft = restTimeSet; 
+                        let nextExIndex = (currentExIndex + 1) % currentExercises.length;
+                        document.getElementById('exercise-name').innerText = "SIGUE: " + currentExercises[nextExIndex]; 
+                        document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - DESCANSO`; 
+                        tBox.className = "timer-box active-rest"; 
+                    } 
+                    else if (phase === 'REST') { 
+                        currentRound++;
+                        currentExIndex = (currentExIndex + 1) % currentExercises.length;
+                        if (currentRound > totalRounds) { 
+                            toggleTimer(); showToast("¡Rutina Completada!"); document.getElementById('check-ejercicio').checked = true; guardarEjercicio(); return; 
+                        } else { 
+                            phase = 'WORK'; timeLeft = workTimeSet; document.getElementById('exercise-name').innerText = currentExercises[currentExIndex]; document.getElementById('timer-status').innerText = `RONDA ${currentRound}/${totalRounds} - TRABAJO`; tBox.className = "timer-box active-work"; 
+                        }
+                    }
                 } else { timeLeft--; }
                 renderTimer();
             }, 1000);
         }
 
-        // Export/Import
+        // --- SISTEMA DE DATOS Y EXPORTACIÓN ---
         function exportarDatos() {
-            const dataStr = JSON.stringify(db); const textArea = document.createElement("textarea"); textArea.value = dataStr; textArea.style.position = "fixed"; textArea.style.left = "-9999px"; document.body.appendChild(textArea); textArea.select();
-            try { document.execCommand('copy'); localStorage.setItem('siboTracker_lastExport', Date.now().toString()); showToast("Datos copiados al portapapeles."); } catch (err) { showToast("Error al copiar. Selecciona el texto manualmente."); }
-            document.body.removeChild(textArea); document.getElementById('backup-modal').style.display = 'none';
+            const dataStr = JSON.stringify(db);
+            const fechaStr = getLocalISODate();
+            const fileName = `Tracker_SIBO_${fechaStr}.json`;
+
+            // 1. Forzar Descarga del Archivo Físico
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // 2. Registrar Snapshot Interno (Virtualización para UX fluida)
+            let backups = JSON.parse(localStorage.getItem('siboTracker_backups')) || [];
+            const hora = new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+            
+            // Calculamos peso estimado en KB para dar feedback visual
+            const bytes = new TextEncoder().encode(dataStr).length;
+            const sizeKB = (bytes / 1024).toFixed(1);
+
+            backups.unshift({ id: Date.now(), nombre: fileName, fechaStr: `${fechaStr} ${hora}`, data: dataStr, size: sizeKB });
+            
+            // Limitamos a los últimos 15 registros para evitar llenar la memoria local (Límite 5MB de Sandbox)
+            if (backups.length > 15) backups.pop();
+            localStorage.setItem('siboTracker_backups', JSON.stringify(backups));
+
+            localStorage.setItem('siboTracker_lastExport', Date.now().toString());
+            showToast("Archivo descargado y copia interna registrada.");
+            document.getElementById('backup-modal').style.display = 'none';
+            
+            // Si el área de importación está abierta, la refrescamos en vivo
+            if (document.getElementById('import-area').style.display === 'block') {
+                renderBackupList();
+            }
         }
-        function toggleImportArea() { const area = document.getElementById('import-area'); area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
-        function procesarImportacionTexto() {
-            const text = document.getElementById('import-text').value;
-            if (!text.trim()) { showToast("El cuadro de texto está vacío."); return; }
-            try { db = JSON.parse(text); sync(); actualizarUI(); document.getElementById('import-text').value = ''; toggleImportArea(); showToast("Datos importados y restaurados."); } catch(err) { showToast("Error: El texto introducido no es un JSON válido."); }
+
+        function toggleImportArea() { 
+            const area = document.getElementById('import-area'); 
+            const isVisible = area.style.display === 'block';
+            area.style.display = isVisible ? 'none' : 'block'; 
+            
+            if (!isVisible) {
+                renderBackupList();
+            }
+        }
+
+        function renderBackupList() {
+            const container = document.getElementById('backup-list-container');
+            const btnConfirmar = document.getElementById('btn-confirmar-importacion');
+            let backups = JSON.parse(localStorage.getItem('siboTracker_backups')) || [];
+            
+            selectedBackupData = null;
+            btnConfirmar.disabled = true;
+
+            if (backups.length === 0) {
+                container.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 13px;">No hay copias de seguridad locales registradas aún.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            backups.forEach((b) => {
+                const item = document.createElement('div');
+                item.className = 'backup-item';
+                item.innerHTML = `
+                    <div>
+                        <div class="backup-item-name">${b.nombre}</div>
+                        <div class="backup-item-size">${b.fechaStr}</div>
+                    </div>
+                    <div class="backup-item-size">${b.size} KB</div>
+                `;
+                item.onclick = () => {
+                    document.querySelectorAll('.backup-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedBackupData = b.data;
+                    btnConfirmar.disabled = false;
+                };
+                container.appendChild(item);
+            });
+        }
+
+        function procesarImportacionSeleccionada() {
+            if (!selectedBackupData) return;
+            try { 
+                db = JSON.parse(selectedBackupData); 
+                sync(); 
+                actualizarUI(); 
+                
+                // Si la importación ocurre estando en métricas, forzar el renderizado de gráficos
+                if (document.getElementById('tab-metricas').classList.contains('active')) renderMetricas();
+                
+                toggleImportArea(); 
+                showToast("Datos restaurados correctamente desde el registro interno."); 
+            } catch(err) { 
+                showToast("Error crítico: La copia de seguridad virtual está corrupta."); 
+            }
+        }
+
+        function importarDesdeArchivoFisico(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const contenido = e.target.result;
+                    db = JSON.parse(contenido);
+                    sync();
+                    actualizarUI();
+                    
+                    if (document.getElementById('tab-metricas').classList.contains('active')) renderMetricas();
+                    
+                    toggleImportArea();
+                    showToast("Archivo físico cargado y datos sobrescritos con éxito.");
+                } catch(err) {
+                    showToast("Error de integridad: El archivo seleccionado no es un JSON válido del sistema.");
+                }
+            };
+            reader.readAsText(file);
+            
+            // Resetear el input para permitir cargar el mismo archivo dos veces si el usuario quiere
+            event.target.value = '';
         }
 
         window.onload = init;
