@@ -359,19 +359,13 @@
 
         <div class="card">
             <h2><i data-lucide="beer"></i> Alcohol</h2>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Si hoy no bebes nada, no hace falta que guardes nada (se registra como 0 automáticamente).</p>
-            <div class="form-group">
-                <label>Tipo de bebida</label>
-                <select id="select-alcohol" onchange="toggleAlcoholInput()">
-                    <option value="0">Nada (0 kcal)</option>
-                    <option value="0.43">Cerveza (0.43 kcal/mL)</option>
-                    <option value="0.85">Vino (0.85 kcal/mL)</option>
-                </select>
+            
+            <div id="alcohol-container">
+                <!-- Se inyecta por JS para soportar múltiples filas -->
             </div>
-            <div class="form-group" id="ml-container" style="display:none;">
-                <label>Cantidad (mL)</label>
-                <input type="number" id="input-ml" placeholder="Ej. 330">
-            </div>
+            
+            <button id="btn-add-alcohol" class="secondary" style="display:none; margin-bottom: 15px; font-size: 12px; padding: 8px; width: max-content; align-items: center; gap: 6px;" onclick="addAlcoholRow()"><i data-lucide="plus" style="width: 14px; height: 14px;"></i> Añadir más</button>
+            
             <button class="danger" onclick="guardarAlcohol()">Registrar Consumo</button>
         </div>
 
@@ -539,6 +533,7 @@
             <div class="metric-block" style="background: rgba(0,229,255,0.1); border-color: var(--secondary);">
                 <div class="metric-header" style="color: var(--secondary);">Mantenimiento Actual (Katch-McArdle)</div>
                 <div id="perfil-tmb-display" class="metric-main" style="color: var(--secondary);">0 kcal</div>
+                <div id="perfil-desglose-tmb" style="font-size: 12px; font-weight: normal; color: #bbb; margin-bottom: 15px; line-height: 1.5;"></div>
                 <div class="metric-details" id="perfil-detalles" style="color: #fff;">
                     <!-- Se inyecta por JS -->
                 </div>
@@ -603,25 +598,25 @@
 
         const dietaVariable = {
             A: {
-                L: { comidaBase: "Pollo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Espinaca 150g + 120g Atún", ceKcal: 305, almidonCena: "tortitas de arroz" },
-                M: { comidaBase: "Ternera 180g + Calabacín 250g", cKcal: 295, almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "120g Atún + 120g Tomate natural", ceKcal: 142, almidonCena: "patata" },
-                X: { comidaBase: "Merluza 200g", cKcal: 160, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "120g Atún + 120g Tomate natural", ceKcal: 142, almidonCena: "tortitas de arroz" },
-                J: { comidaBase: "Lomo 180g + Pimientos 200g", cKcal: 300, almidonComida: "arroz", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate natural", ceKcal: 142, almidonCena: "patata" },
-                V: { comidaBase: "Gambas 200g", cKcal: 180, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "150g Salmón + Judía 200g", ceKcal: 362, almidonCena: "tortitas de arroz" }
+                L: { comidaBase: "130g Pollo + 200g Judía + 60g Arroz (490 kcal) [Inc. 2 cda AOVE]", cKcal: 490, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l (120 kcal)", kcal: 120 }, cenaBase: "100g Atún + 1 Huevo + Espinacas + Tomate (440 kcal) [Inc. 2 cda AOVE]", ceKcal: 440, almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "130g Ternera + Calabacín + 25g Arroz (480 kcal) [Inc. 2 cda AOVE]", cKcal: 480, almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos (150 kcal)", kcal: 150 }, cenaBase: "120g Atún + 100g Patata + Tomate (420 kcal) [Inc. 2 cda AOVE]", ceKcal: 420, almidonCena: "patata" },
+                X: { comidaBase: "160g Merluza + 90g Arroz (510 kcal) [Inc. 2 cda AOVE]", cKcal: 510, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l (120 kcal)", kcal: 120 }, cenaBase: "120g Atún + Tomate + 2 tortitas arroz (420 kcal) [Inc. 2 cda AOVE]", ceKcal: 420, almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "140g Lomo + Pimientos + 30g Arroz (480 kcal) [Inc. 2 cda AOVE]", cKcal: 480, almidonComida: "arroz", merienda: { desc: "40g Queso s/l (120 kcal)", kcal: 120 }, cenaBase: "120g Atún + 120g Patata + Tomate (450 kcal) [Inc. 2 cda AOVE]", ceKcal: 450, almidonCena: "patata" },
+                V: { comidaBase: "160g Gambas + 100g Arroz (500 kcal) [Inc. 2 cda AOVE]", cKcal: 500, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l (120 kcal)", kcal: 120 }, cenaBase: "100g Salmón + 200g Judía (430 kcal) [Inc. 2 cda AOVE]", ceKcal: 430, almidonCena: "tortitas de arroz" }
             },
             B: {
-                L: { comidaBase: "Salmón 150g + Espárragos 200g", cKcal: 340, almidonComida: "patata", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "2 Huevos + 80g Atún", ceKcal: 230, almidonCena: "tortitas de arroz" },
-                M: { comidaBase: "Pollo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Nueces", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", ceKcal: 182, almidonCena: "tortitas de arroz" },
-                X: { comidaBase: "Ternera 180g + Pimientos", cKcal: 302, almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "180g Lomo + Judía 200g", ceKcal: 312, almidonCena: "tortitas de arroz" },
-                J: { comidaBase: "Gambas 200g", cKcal: 180, almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "150g Salmón + Calabacín", ceKcal: 334, almidonCena: "tortitas de arroz" },
-                V: { comidaBase: "Pollo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l + 10g Almendras", kcal: 160 }, cenaBase: "200g Merluza + 120g Tomate natural", ceKcal: 182, almidonCena: "tortitas de arroz" }
+                L: { comidaBase: "100g Salmón + Espárragos + 20g Arroz (420 kcal) [Inc. 2 cda AOVE]", cKcal: 420, almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos (150 kcal)", kcal: 150 }, cenaBase: "120g Atún + 1 Huevo + 2 tortitas (480 kcal) [Inc. 2 cda AOVE]", ceKcal: 480, almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "150g Pollo + Judía + 50g Arroz (500 kcal) [Inc. 2 cda AOVE]", cKcal: 500, almidonComida: "arroz", merienda: { desc: "2 Yogures + 10g Nueces (180 kcal)", kcal: 180 }, cenaBase: "150g Merluza + Tomate + 1 tortita (370 kcal) [Inc. 2 cda AOVE]", ceKcal: 370, almidonCena: "tortitas de arroz" },
+                X: { comidaBase: "120g Ternera + Pimientos + 40g Arroz (450 kcal) [Inc. 2 cda AOVE]", cKcal: 450, almidonComida: "arroz", merienda: { desc: "40g Queso s/l (120 kcal)", kcal: 120 }, cenaBase: "140g Lomo + Judía + 2 tortitas (480 kcal) [Inc. 2 cda AOVE]", ceKcal: 480, almidonCena: "tortitas de arroz" },
+                J: { comidaBase: "170g Gambas + 110g Arroz (510 kcal) [Inc. 2 cda AOVE]", cKcal: 510, almidonComida: "arroz", merienda: { desc: "1 Huevo cocido (75 kcal)", kcal: 75 }, cenaBase: "100g Salmón + Calabacín + 2 tortitas (465 kcal) [Inc. 2 cda AOVE]", ceKcal: 465, almidonCena: "tortitas de arroz" },
+                V: { comidaBase: "150g Pollo + Judía + 50g Arroz (500 kcal) [Inc. 2 cda AOVE]", cKcal: 500, almidonComida: "arroz", merienda: { desc: "2 Yogures + 10g Almendras (180 kcal)", kcal: 180 }, cenaBase: "150g Merluza + Tomate + 1 tortita (370 kcal) [Inc. 2 cda AOVE]", ceKcal: 370, almidonCena: "tortitas de arroz" }
             },
             C: {
-                L: { comidaBase: "Pavo 180g + Judía 200g", cKcal: 260, almidonComida: "arroz", merienda: { desc: "15g Nueces", kcal: 100 }, cenaBase: "200g Gambas + Espinaca", ceKcal: 215, almidonCena: "tortitas de arroz" },
-                M: { comidaBase: "Ternera 180g + Espárragos", cKcal: 292, almidonComida: "patata", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "2 Huevos + Pimientos", ceKcal: 200, almidonCena: "tortitas de arroz" },
-                X: { comidaBase: "Salmón 150g + Alcachofa", cKcal: 390, almidonComida: "arroz", merienda: { desc: "2 Huevos cocidos", kcal: 150 }, cenaBase: "180g Pollo + Calabacín", ceKcal: 232, almidonCena: "tortitas de arroz" },
-                J: { comidaBase: "Lomo 180g + Pimientos", cKcal: 300, almidonComida: "patata", merienda: { desc: "50g Queso s/l", kcal: 180 }, cenaBase: "120g Atún + 120g Tomate", ceKcal: 142, almidonCena: "tortitas de arroz" },
-                V: { comidaBase: "Merluza 200g", cKcal: 160, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l", kcal: 90 }, cenaBase: "180g Ternera + Espinaca", ceKcal: 287, almidonCena: "tortitas de arroz" }
+                L: { comidaBase: "150g Pavo + Judía + 70g Arroz (490 kcal) [Inc. 2 cda AOVE]", cKcal: 490, almidonComida: "arroz", merienda: { desc: "15g Nueces (100 kcal)", kcal: 100 }, cenaBase: "180g Gambas + Espinaca + 2 tortitas (460 kcal) [Inc. 2 cda AOVE]", ceKcal: 460, almidonCena: "tortitas de arroz" },
+                M: { comidaBase: "130g Ternera + Espárragos + 50g Arroz (480 kcal) [Inc. 2 cda AOVE]", cKcal: 480, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l (120 kcal)", kcal: 120 }, cenaBase: "2 Huevos + Pimientos + 2 tortitas (450 kcal) [Inc. 2 cda AOVE]", ceKcal: 450, almidonCena: "tortitas de arroz" },
+                X: { comidaBase: "110g Salmón + Alcachofa + 20g Arroz (435 kcal) [Inc. 2 cda AOVE]", cKcal: 435, almidonComida: "arroz", merienda: { desc: "1 Huevo cocido (75 kcal)", kcal: 75 }, cenaBase: "160g Pollo + Calabacín + 70g Arroz (540 kcal) [Inc. 2 cda AOVE]", ceKcal: 540, almidonCena: "arroz" },
+                J: { comidaBase: "150g Lomo + Pimientos + 50g Arroz (510 kcal) [Inc. 2 cda AOVE]", cKcal: 510, almidonComida: "arroz", merienda: { desc: "40g Queso s/l (120 kcal)", kcal: 120 }, cenaBase: "140g Atún + Tomate + 2 tortitas (420 kcal) [Inc. 2 cda AOVE]", ceKcal: 420, almidonCena: "tortitas de arroz" },
+                V: { comidaBase: "180g Merluza + 110g Arroz (520 kcal) [Inc. 2 cda AOVE]", cKcal: 520, almidonComida: "arroz", merienda: { desc: "2 Yogures s/l (120 kcal)", kcal: 120 }, cenaBase: "140g Ternera + Espinaca + 1 tortita (410 kcal) [Inc. 2 cda AOVE]", ceKcal: 410, almidonCena: "tortitas de arroz" }
             }
         };
 
@@ -959,6 +954,7 @@
                     alcoholKcal: 0, 
                     alcoholMl: 0,
                     alcoholType: "0",
+                    alcoholList: [], 
                     excesoKcal: 0,
                     extraKcal: 0, 
                     findeGuardado: false,
@@ -966,12 +962,123 @@
                 };
             } else {
                 if(!db[fechaStr].ejerciciosManuales) db[fechaStr].ejerciciosManuales = [];
+                if(!db[fechaStr].alcoholList) db[fechaStr].alcoholList = []; 
                 if(db[fechaStr].excesoKcal === undefined) db[fechaStr].excesoKcal = 0;
             }
         }
 
-        function toggleAlcoholInput() {
-            document.getElementById('ml-container').style.display = document.getElementById('select-alcohol').value != "0" ? "block" : "none";
+        // --- SISTEMA MULTI-ALCOHOL DINÁMICO ---
+        function renderAlcoholUI() {
+            const dataHoy = db[getInfoDia().fechaString];
+            const container = document.getElementById('alcohol-container');
+            container.innerHTML = '';
+            
+            let aList = dataHoy.alcoholList;
+            if (!aList || aList.length === 0) {
+                if (dataHoy.alcoholType && dataHoy.alcoholType !== "0") {
+                    aList = [{ type: dataHoy.alcoholType, ml: dataHoy.alcoholMl || 0 }];
+                } else {
+                    aList = [{ type: "0", ml: "" }];
+                }
+            }
+
+            aList.forEach((item, index) => {
+                container.appendChild(createAlcoholRow(item.type, item.ml, index));
+            });
+
+            const btnAdd = document.getElementById('btn-add-alcohol');
+            if (aList.length < 2 && aList[0].type !== "0") {
+                btnAdd.style.display = 'flex';
+            } else {
+                btnAdd.style.display = 'none';
+            }
+            lucide.createIcons();
+        }
+
+        function createAlcoholRow(type, ml, index) {
+            const div = document.createElement('div');
+            div.className = 'alcohol-row';
+            div.style.display = 'flex';
+            div.style.gap = '10px';
+            div.style.alignItems = 'flex-end';
+            div.style.marginBottom = '15px';
+            
+            const isVisible = type !== "0";
+            
+            div.innerHTML = `
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    ${index === 0 ? '<label>Tipo de bebida</label>' : ''}
+                    <select class="sel-alc-type" onchange="handleAlcoholChange(this)">
+                        <option value="0" ${type === "0" ? "selected" : ""}>Nada (0 kcal)</option>
+                        <option value="0.43" ${type === "0.43" ? "selected" : ""}>Cerveza (0.43 kcal/mL)</option>
+                        <option value="0.78" ${type === "0.78" ? "selected" : ""}>Vino (0.78 kcal/mL)</option>
+                    </select>
+                </div>
+                <div class="form-group input-alc-container" style="flex: 1; margin-bottom: 0; display: ${isVisible ? 'block' : 'none'};">
+                    ${index === 0 ? '<label>Cantidad (mL)</label>' : ''}
+                    <input type="number" class="inp-alc-ml" placeholder="Ej. 330" value="${ml || ''}">
+                </div>
+            `;
+            return div;
+        }
+
+        function handleAlcoholChange(selectEl) {
+            const row = selectEl.closest('.alcohol-row');
+            const inputContainer = row.querySelector('.input-alc-container');
+            const val = selectEl.value;
+            inputContainer.style.display = val !== "0" ? "block" : "none";
+            
+            const rows = document.querySelectorAll('.alcohol-row');
+            const btn = document.getElementById('btn-add-alcohol');
+            if (rows.length === 1 && val !== "0") {
+                btn.style.display = 'flex';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        function addAlcoholRow() {
+            const container = document.getElementById('alcohol-container');
+            const firstSelect = container.querySelector('.sel-alc-type');
+            
+            let currentType = firstSelect.value;
+            let nextType = "0.43"; 
+            if (currentType === "0.43") nextType = "0.78"; 
+            else if (currentType === "0.78") nextType = "0.43"; 
+
+            container.appendChild(createAlcoholRow(nextType, "", container.children.length));
+            document.getElementById('btn-add-alcohol').style.display = 'none';
+        }
+
+        function guardarAlcohol() {
+            const rows = document.querySelectorAll('.alcohol-row');
+            let totalKcal = 0;
+            let totalMl = 0;
+            let aList = [];
+
+            rows.forEach(row => {
+                const type = row.querySelector('.sel-alc-type').value;
+                const ml = parseFloat(row.querySelector('.inp-alc-ml').value) || 0;
+                
+                if (type !== "0" && ml > 0) {
+                    aList.push({ type: type, ml: ml });
+                    totalKcal += parseFloat(type) * ml;
+                    totalMl += ml;
+                }
+            });
+
+            if (aList.length === 0) {
+                aList.push({ type: "0", ml: "" });
+            }
+
+            db[getInfoDia().fechaString].alcoholList = aList;
+            db[getInfoDia().fechaString].alcoholKcal = totalKcal;
+            db[getInfoDia().fechaString].alcoholMl = totalMl;
+            db[getInfoDia().fechaString].alcoholType = aList[0].type; 
+            
+            sync(); 
+            actualizarUI(); 
+            showToast("Alcohol registrado.");
         }
 
         function buildMealHTML(id, label, desc, isChecked, kcal) {
@@ -1122,8 +1229,9 @@
             let budgetVarSedentario = targetSedentario - (DENSIDADES.FIJO + meriendaKcal + extras.cKcal + extras.ceKcal);
             if (budgetVarSedentario < 0) budgetVarSedentario = 0;
 
-            const comidaBudget = budgetVarSedentario / 2;
-            const cenaBaseBudget = budgetVarSedentario / 2;
+            // La Comida es matemáticamente estática (0 de ajuste). Todo el presupuesto compensatorio va a la Cena.
+            const comidaBudget = 0;
+            const cenaBaseBudget = budgetVarSedentario;
             const cenaExtraBudget = targetTotal - targetSedentario; 
 
             return {
@@ -1198,14 +1306,30 @@
 
                 document.getElementById('sibo-valve-warning').style.display = macros.valvulaSiboActiva ? "block" : "none";
 
-                let cAlmStr = macros.comida.starchG > 0 ? ` + ${macros.comida.starchG}g ${macros.comida.tipoAlmidonFinal}` : "";
-                let cOilStr = macros.comida.oilMl > 0 ? ` + ${macros.comida.oilCda} cda AOVE` : "";
-                let descComida = `${meals.comidaBase}${cAlmStr}${cOilStr}`;
-                let kcalComida = meals.cKcal + macros.comida.kcalTotales;
+                function generarAjusteHTML(macrosCom) {
+                    if (macrosCom.kcalTotales <= 0) return "";
+                    let almText = "";
+                    let oilText = macrosCom.oilMl > 0 ? ` + ${macrosCom.oilCda} cda AOVE` : "";
+                    
+                    if (macrosCom.tipoAlmidonFinal === "tortitas de arroz" && macrosCom.starchG > 0) {
+                        let numTortitas = Math.max(1, Math.round(macrosCom.starchG / 7.5)); // 1 tortita = 7.5g
+                        almText = `+ ${numTortitas} tortita(s) de arroz`;
+                    } else if (macrosCom.starchG > 0) {
+                        almText = `+ ${macrosCom.starchG}g ${macrosCom.tipoAlmidonFinal}`;
+                    }
+                    
+                    let finalText = almText + oilText;
+                    if (finalText.startsWith(" + ")) finalText = finalText.substring(3);
+                    
+                    return `<div style="margin-top: 8px; font-size: 12px; color: var(--secondary); background: rgba(0,229,255,0.05); padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--secondary);"><strong>Ajuste recomendado:</strong> ${finalText} <span style="color:var(--text-muted); font-size:10px; display:block; margin-top:4px;">(Extra para alcanzar TMB / Gasto entrenamiento)</span></div>`;
+                }
 
-                let ceAlmStr = macros.cena.starchG > 0 ? ` + ${macros.cena.starchG}g ${macros.cena.tipoAlmidonFinal}` : "";
-                let ceOilStr = macros.cena.oilMl > 0 ? ` + ${macros.cena.oilCda} cda AOVE` : "";
-                let descCena = `${meals.cenaBase}${ceAlmStr}${ceOilStr}`;
+                // La comida queda matemáticamente sellada sin ajustes extra
+                let descComida = meals.comidaBase;
+                let kcalComida = meals.cKcal;
+
+                // La cena absorbe todo el ajuste dinámico y su caja UI
+                let descCena = meals.cenaBase + generarAjusteHTML(macros.cena);
                 let kcalCena = meals.ceKcal + macros.cena.kcalTotales;
 
                 document.getElementById('dieta-list').innerHTML = 
@@ -1220,9 +1344,7 @@
             document.getElementById('select-exceso').value = dataHoy.excesoKcal || "0";
             manejarAlertaMotilidadUI();
             
-            document.getElementById('select-alcohol').value = dataHoy.alcoholType || "0";
-            document.getElementById('input-ml').value = dataHoy.alcoholMl || '';
-            toggleAlcoholInput();
+            renderAlcoholUI();
 
             // 2. Pestaña de Entrenamiento
             if (info.esFinde) {
@@ -1263,9 +1385,15 @@
                 
                 const edad = calcularEdad();
                 const peso = getPesoActual();
+                const tmbPuro = Math.round(calcularTMB());
                 const mantenimientoActual = calcularMantenimientoActual();
+                const neat = mantenimientoActual - tmbPuro;
                 
                 document.getElementById('perfil-tmb-display').innerText = mantenimientoActual.toLocaleString('es-ES') + ' kcal';
+                document.getElementById('perfil-desglose-tmb').innerHTML = `
+                    <div style="margin-bottom: 4px;">Basal: ${tmbPuro.toLocaleString('es-ES')} kcal <span style="opacity: 0.7;">(Coste de Katch-McArdle de tu masa magra; energía vital en reposo absoluto)</span></div>
+                    <div>NEAT: ${neat.toLocaleString('es-ES')} kcal <span style="opacity: 0.7;">(Derivado del factor de actividad diaria; gasto termogénico por movimientos, postura y digestión)</span></div>
+                `;
                 document.getElementById('perfil-detalles').innerHTML = `
                     <span><i data-lucide="calendar"></i> ${edad} años</span>
                     <span><i data-lucide="weight"></i> ${peso} kg</span>
@@ -1346,15 +1474,6 @@
             db[hoyStr].ejerciciosManuales.splice(index, 1);
             sync(); actualizarUI();
             showToast("Actividad eliminada.");
-        }
-        
-        function guardarAlcohol() {
-            let type = document.getElementById('select-alcohol').value;
-            let ml = parseFloat(document.getElementById('input-ml').value) || 0;
-            db[getInfoDia().fechaString].alcoholType = type;
-            db[getInfoDia().fechaString].alcoholMl = ml;
-            db[getInfoDia().fechaString].alcoholKcal = parseFloat(type) * ml;
-            sync(); showToast("Alcohol registrado.");
         }
 
         function sync() { 
