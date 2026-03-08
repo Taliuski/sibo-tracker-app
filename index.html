@@ -463,7 +463,7 @@
             </div>
 
             <div class="metric-block">
-                <div class="metric-header">Balance Diario (Hoy)</div>
+                <div class="metric-header" id="header-balance-dia">Balance Diario (Hoy)</div>
                 <div id="val-neto-dia" class="metric-main">0 kcal</div>
                 <div class="metric-details" id="det-dia"></div>
             </div>
@@ -770,9 +770,10 @@
             return edad;
         }
 
-        function getPesoActual() {
+        function getPesoActual(dateRef) {
+            let limitDate = dateRef || getLocalISODate();
             let peso = db.profile && db.profile.pesoInicial ? parseFloat(db.profile.pesoInicial) : 91.7; 
-            const sortedDates = Object.keys(db).filter(k => k !== 'profile' && k !== 'profileSetup').sort();
+            const sortedDates = Object.keys(db).filter(k => k !== 'profile' && k !== 'profileSetup' && k <= limitDate).sort();
             for (let i = sortedDates.length - 1; i >= 0; i--) {
                 if (db[sortedDates[i]].peso) {
                     peso = parseFloat(db[sortedDates[i]].peso);
@@ -782,16 +783,16 @@
             return peso;
         }
 
-        function calcularTMB() {
-            const pesoDinamico = getPesoActual();
+        function calcularTMB(dateRef) {
+            const pesoDinamico = getPesoActual(dateRef);
             const grasaPercent = db.profile && db.profile.grasaPercent ? parseFloat(db.profile.grasaPercent) : 22;
             const lbm = pesoDinamico * (1 - (grasaPercent / 100));
             return 370 + (21.6 * lbm);
         }
 
-        function calcularMantenimientoActual() {
+        function calcularMantenimientoActual(dateRef) {
             const factorActividad = db.profile && db.profile.factorActividad ? parseFloat(db.profile.factorActividad) : 1.2;
-            return Math.round(calcularTMB() * factorActividad);
+            return Math.round(calcularTMB(dateRef) * factorActividad);
         }
 
         function validarSetup() {
@@ -855,7 +856,6 @@
             sync();
             actualizarUI();
             
-            if (document.getElementById('tab-metricas').classList.contains('active')) renderMetricas();
             showToast("Perfil fisiológico actualizado.");
         }
 
@@ -1206,9 +1206,9 @@
             let tmb = logDia.tmbSnapshot;
             
             if (isHoyOFuturo || !mantenimiento) {
-                mantenimiento = calcularMantenimientoActual();
+                mantenimiento = calcularMantenimientoActual(dateStr);
                 intensidad = parseInt(db.profile.intensidadObjetivo) || 500;
-                tmb = calcularTMB();
+                tmb = calcularTMB(dateStr);
             }
 
             let valvulaSiboActiva = false;
@@ -1381,27 +1381,44 @@
                 document.getElementById('perfil-nacimiento').value = db.profile.fechaNacimiento;
                 document.getElementById('perfil-complexion').value = db.profile.grasaPercent;
                 document.getElementById('perfil-actividad').value = db.profile.factorActividad;
-                document.getElementById('perfil-intensidad-dieta').value = db.profile.intensidadObjetivo;
                 
-                const edad = calcularEdad();
-                const peso = getPesoActual();
-                const tmbPuro = Math.round(calcularTMB());
-                const mantenimientoActual = calcularMantenimientoActual();
-                const neat = mantenimientoActual - tmbPuro;
+                let tmbPuro, mantenimientoActual, neat, peso, intObjetivo;
+                const isPast = info.fechaString < getLocalISODate();
                 
+                if (isPast && dataHoy.mantenimientoSnapshot) {
+                    tmbPuro = Math.round(dataHoy.tmbSnapshot || calcularTMB(info.fechaString));
+                    mantenimientoActual = dataHoy.mantenimientoSnapshot;
+                    neat = mantenimientoActual - tmbPuro;
+                    peso = dataHoy.peso || getPesoActual(info.fechaString);
+                    intObjetivo = dataHoy.intensidadSnapshot || db.profile.intensidadObjetivo;
+                } else {
+                    peso = getPesoActual(info.fechaString);
+                    tmbPuro = Math.round(calcularTMB(info.fechaString));
+                    mantenimientoActual = calcularMantenimientoActual(info.fechaString);
+                    neat = mantenimientoActual - tmbPuro;
+                    intObjetivo = db.profile.intensidadObjetivo;
+                }
+                
+                document.getElementById('perfil-intensidad-dieta').value = intObjetivo;
+
                 document.getElementById('perfil-tmb-display').innerText = mantenimientoActual.toLocaleString('es-ES') + ' kcal';
                 document.getElementById('perfil-desglose-tmb').innerHTML = `
                     <div style="margin-bottom: 4px;">Basal: ${tmbPuro.toLocaleString('es-ES')} kcal <span style="opacity: 0.7;">(Coste de Katch-McArdle de tu masa magra; energía vital en reposo absoluto)</span></div>
                     <div>NEAT: ${neat.toLocaleString('es-ES')} kcal <span style="opacity: 0.7;">(Derivado del factor de actividad diaria; gasto termogénico por movimientos, postura y digestión)</span></div>
                 `;
                 document.getElementById('perfil-detalles').innerHTML = `
-                    <span><i data-lucide="calendar"></i> ${edad} años</span>
+                    <span><i data-lucide="calendar"></i> ${calcularEdad()} años</span>
                     <span><i data-lucide="weight"></i> ${peso} kg</span>
                     <span><i data-lucide="percent"></i> ${db.profile.grasaPercent}% Grasa</span>
                 `;
             }
 
             lucide.createIcons();
+
+            // Sincronizar Métricas en tiempo real si estamos en la pestaña o cambiamos de fecha
+            if (document.getElementById('tab-metricas').classList.contains('active')) {
+                renderMetricas();
+            }
         }
 
         // Acciones Guardado
@@ -1482,8 +1499,8 @@
             
             if (db[fechaStr]) {
                 if (fechaStr >= hoyStr || !db[fechaStr].mantenimientoSnapshot) {
-                    db[fechaStr].mantenimientoSnapshot = calcularMantenimientoActual();
-                    db[fechaStr].tmbSnapshot = calcularTMB();
+                    db[fechaStr].mantenimientoSnapshot = calcularMantenimientoActual(fechaStr);
+                    db[fechaStr].tmbSnapshot = calcularTMB(fechaStr);
                     db[fechaStr].intensidadSnapshot = parseInt(db.profile.intensidadObjetivo) || 500;
                 }
             }
@@ -1607,7 +1624,13 @@
             renderMetricBlock('val-neto-semana', 'det-semana', sem);
             renderMetricBlock('val-neto-mes', 'det-mes', mes);
             
-            const intensidadDiaria = parseInt(db.profile.intensidadObjetivo) || 500;
+            const headDia = document.getElementById('header-balance-dia');
+            if (headDia) {
+                headDia.innerText = (currDateStr === getLocalISODate()) ? 'Balance Diario (Hoy)' : `Balance Diario (${currDateStr})`;
+            }
+            
+            const dataHoy = db[currDateStr] || {};
+            const intensidadDiaria = dataHoy.intensidadSnapshot || parseInt(db.profile.intensidadObjetivo) || 500;
             const deficitSemanalTeorico = intensidadDiaria * 7;
             const kgTeorico = (deficitSemanalTeorico * -1) / 7700;
             
@@ -1883,9 +1906,6 @@
                 sync(); 
                 actualizarUI(); 
                 
-                // Si la importación ocurre estando en métricas, forzar el renderizado de gráficos
-                if (document.getElementById('tab-metricas').classList.contains('active')) renderMetricas();
-                
                 toggleImportArea(); 
                 showToast("Datos restaurados correctamente desde el registro interno."); 
             } catch(err) { 
@@ -1904,8 +1924,6 @@
                     db = JSON.parse(contenido);
                     sync();
                     actualizarUI();
-                    
-                    if (document.getElementById('tab-metricas').classList.contains('active')) renderMetricas();
                     
                     toggleImportArea();
                     showToast("Archivo físico cargado y datos sobrescritos con éxito.");
